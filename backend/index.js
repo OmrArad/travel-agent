@@ -3,7 +3,6 @@ import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import { askLLM } from "./services/llm.js";
-import { getWeather } from "./services/weather.js";
 
 console.log("🔑 Ollama configuration:");
 console.log("  - Base URL:", process.env.OLLAMA_BASE_URL || "http://localhost:11434");
@@ -20,16 +19,8 @@ app.post("/chat", async (req, res) => {
   try {
     const { message } = req.body;
     console.log("🟢 Incoming message:", message);
-    
-    // Check if query needs weather data
-    if (message.toLowerCase().includes("weather")) {
-      const city = message.split("in ")[1] || "Paris"; // crude extraction
-      const weather = await getWeather(city);
-      conversationHistory.push({ role: "user", content: message });
-      conversationHistory.push({ role: "system", content: `Weather in ${city}: ${weather}` });
-    }
 
-    // Call LLM
+    // Call LLM with function calling support
     const response = await askLLM(conversationHistory, message);
     console.log("🟢 LLM response (to be sent):", response);
 
