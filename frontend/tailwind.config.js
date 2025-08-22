@@ -40,8 +40,58 @@ export default {
       fontFamily: {
         sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', 'sans-serif'],
       },
+      typography: {
+        DEFAULT: {
+          css: {
+            maxWidth: 'none',
+            color: 'inherit',
+            a: {
+              color: '#3b82f6',
+              '&:hover': {
+                color: '#2563eb',
+              },
+            },
+            code: {
+              color: 'inherit',
+              backgroundColor: '#f3f4f6',
+              padding: '0.125rem 0.25rem',
+              borderRadius: '0.25rem',
+              fontSize: '0.875rem',
+            },
+            'code::before': {
+              content: '""',
+            },
+            'code::after': {
+              content: '""',
+            },
+            pre: {
+              backgroundColor: '#f3f4f6',
+              color: 'inherit',
+            },
+          },
+        },
+        dark: {
+          css: {
+            color: '#e5e7eb',
+            a: {
+              color: '#60a5fa',
+              '&:hover': {
+                color: '#93c5fd',
+              },
+            },
+            code: {
+              backgroundColor: '#374151',
+            },
+            pre: {
+              backgroundColor: '#374151',
+            },
+          },
+        },
+      },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
   darkMode: 'media',
 } 

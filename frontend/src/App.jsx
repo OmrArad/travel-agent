@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { sendMessage } from "./api";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function App() {
   const [messages, setMessages] = useState([
@@ -79,16 +81,45 @@ export default function App() {
     }, 100);
   };
 
-  const formatMessage = (content) => {
-    // Simple markdown-like formatting for better readability
-    return content
-      .split('\n')
-      .map((line, index) => (
-        <span key={index}>
-          {line}
-          {index < content.split('\n').length - 1 && <br />}
-        </span>
-      ));
+  const formatMessage = (content, role) => {
+    // For user messages, just return plain text
+    if (role === "user") {
+      return content;
+    }
+    
+    // For assistant messages, render markdown
+    return (
+      <ReactMarkdown 
+        remarkPlugins={[remarkGfm]}
+        className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-gray-900 dark:prose-headings:text-white prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-strong:text-gray-900 dark:prose-strong:text-white prose-code:text-gray-800 dark:prose-code:text-gray-200 prose-pre:bg-gray-100 dark:prose-pre:bg-gray-700 prose-blockquote:border-blue-500"
+        components={{
+          // Custom styling for different markdown elements
+          h1: ({node, ...props}) => <h1 className="text-xl font-bold mb-3" {...props} />,
+          h2: ({node, ...props}) => <h2 className="text-lg font-semibold mb-2" {...props} />,
+          h3: ({node, ...props}) => <h3 className="text-base font-medium mb-2" {...props} />,
+          p: ({node, ...props}) => <p className="mb-2 leading-relaxed" {...props} />,
+          ul: ({node, ...props}) => <ul className="list-disc list-inside mb-3 space-y-1" {...props} />,
+          ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-3 space-y-1" {...props} />,
+          li: ({node, ...props}) => <li className="leading-relaxed" {...props} />,
+          code: ({node, inline, ...props}) => 
+            inline ? (
+              <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono" {...props} />
+            ) : (
+              <code className="block bg-gray-100 dark:bg-gray-700 p-3 rounded-lg text-sm font-mono overflow-x-auto" {...props} />
+            ),
+          pre: ({node, ...props}) => <pre className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg overflow-x-auto mb-3" {...props} />,
+          blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-600 dark:text-gray-300 mb-3" {...props} />,
+          strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+          em: ({node, ...props}) => <em className="italic" {...props} />,
+          a: ({node, ...props}) => <a className="text-blue-600 dark:text-blue-400 hover:underline" {...props} />,
+          table: ({node, ...props}) => <table className="min-w-full border border-gray-300 dark:border-gray-600 mb-3" {...props} />,
+          th: ({node, ...props}) => <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 bg-gray-50 dark:bg-gray-700 font-semibold" {...props} />,
+          td: ({node, ...props}) => <td className="border border-gray-300 dark:border-gray-600 px-3 py-2" {...props} />,
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    );
   };
 
   const formatTimestamp = (timestamp) => {
@@ -270,8 +301,8 @@ export default function App() {
                         ? "bg-blue-600 text-white"
                         : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
                     }`}>
-                      <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                        {formatMessage(message.content)}
+                      <div className="text-sm leading-relaxed">
+                        {formatMessage(message.content, message.role)}
                       </div>
                     </div>
                     {message.timestamp && (

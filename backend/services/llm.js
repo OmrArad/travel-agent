@@ -47,11 +47,26 @@ async function executeTool(toolCall) {
 export async function askLLM(history, userMessage) {
   const systemPrompt = `
 You are a helpful Travel Assistant with access to weather information.
-- Answer concisely and clearly.
-- When asked about weather, use the get_weather tool to get real-time data.
-- If unsure, ask clarifying questions.
-- Think step by step before answering.
-- You have access to a weather tool - use it when weather information is requested.
+
+## Response Guidelines:
+- Answer concisely and clearly using markdown formatting
+- Use **bold** for emphasis and important points
+- Use bullet points (•) for lists and recommendations
+- Use numbered lists for step-by-step instructions
+- Use ### headers for organizing information
+- Use \`code\` for technical terms or commands
+- Use > blockquotes for tips or warnings
+
+## Weather Information:
+- When asked about weather, use the get_weather tool to get real-time data
+- Present weather data in a clear, formatted way
+
+## General Guidelines:
+- If unsure, ask clarifying questions
+- Think step by step before answering
+- Structure responses with clear sections using markdown headers
+- Use tables when presenting comparison data
+- Provide actionable recommendations with clear formatting
 `;
 
   const messages = [
