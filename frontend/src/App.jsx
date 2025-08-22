@@ -11,7 +11,9 @@ export default function App() {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -20,6 +22,14 @@ export default function App() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
+    }
+  }, [input]);
 
   const handleSend = async () => {
     if (!input.trim()) return;
@@ -96,194 +106,262 @@ export default function App() {
     return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  const clearChat = () => {
+    setMessages([
+      {
+        role: "assistant",
+        content: "Hello! I'm your AI travel assistant. I can help you with:\n\n• Destination recommendations\n• Weather information for any city\n• Packing suggestions\n• Travel tips and advice\n\nWhat would you like to know about?",
+        timestamp: new Date()
+      }
+    ]);
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="max-w-4xl mx-auto h-screen flex flex-col">
+    <div className="h-screen bg-gray-50 dark:bg-gray-900 flex">
+      {/* Sidebar */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-80 bg-gray-900 transform transition-transform duration-300 ease-in-out ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } lg:relative lg:translate-x-0 lg:flex lg:flex-col`}>
+        <div className="flex flex-col h-full">
+          {/* Sidebar Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-700">
+            <button
+              onClick={clearChat}
+              className="flex items-center space-x-3 text-white hover:bg-gray-800 rounded-lg px-3 py-2 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="font-medium">New chat</span>
+            </button>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden text-gray-400 hover:text-white"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="flex-1 p-4 space-y-3">
+            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">Quick Actions</h3>
+            
+            <button
+              onClick={() => handleQuickAction("What's the weather in Paris?")}
+              className="w-full text-left p-3 rounded-lg hover:bg-gray-800 transition-colors group"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm">🌤️</span>
+                </div>
+                <div>
+                  <div className="text-white font-medium text-sm">Weather Check</div>
+                  <div className="text-gray-400 text-xs">Check weather in Paris</div>
+                </div>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => handleQuickAction("Recommend some travel destinations for summer")}
+              className="w-full text-left p-3 rounded-lg hover:bg-gray-800 transition-colors group"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm">🏖️</span>
+                </div>
+                <div>
+                  <div className="text-white font-medium text-sm">Summer Destinations</div>
+                  <div className="text-gray-400 text-xs">Get recommendations</div>
+                </div>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => handleQuickAction("What should I pack for a beach vacation?")}
+              className="w-full text-left p-3 rounded-lg hover:bg-gray-800 transition-colors group"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm">🧳</span>
+                </div>
+                <div>
+                  <div className="text-white font-medium text-sm">Packing Tips</div>
+                  <div className="text-gray-400 text-xs">Beach vacation essentials</div>
+                </div>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => handleQuickAction("Tell me about budget travel tips")}
+              className="w-full text-left p-3 rounded-lg hover:bg-gray-800 transition-colors group"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-yellow-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white text-sm">💰</span>
+                </div>
+                <div>
+                  <div className="text-white font-medium text-sm">Budget Travel</div>
+                  <div className="text-gray-400 text-xs">Money-saving tips</div>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col">
         {/* Header */}
-        <div className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-lg">✈️</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Travel Assistant</h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Your AI travel companion</p>
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">✈️</span>
+              </div>
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Travel Assistant</h1>
             </div>
           </div>
         </div>
 
         {/* Messages Container */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto bg-white dark:bg-gray-800">
           {messages.length === 1 && (
-            <div className="text-center py-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto">
-                <button
-                  onClick={() => handleQuickAction("What's the weather in Paris?")}
-                  className="p-4 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-200 text-left"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                      <span className="text-blue-600 dark:text-blue-400">🌤️</span>
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900 dark:text-white">Weather Check</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">Check weather in Paris</div>
-                    </div>
-                  </div>
-                </button>
-                
-                <button
-                  onClick={() => handleQuickAction("Recommend some travel destinations for summer")}
-                  className="p-4 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-200 text-left"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                      <span className="text-green-600 dark:text-green-400">🏖️</span>
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900 dark:text-white">Summer Destinations</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">Get recommendations</div>
-                    </div>
-                  </div>
-                </button>
-                
-                <button
-                  onClick={() => handleQuickAction("What should I pack for a beach vacation?")}
-                  className="p-4 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-200 text-left"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                      <span className="text-purple-600 dark:text-purple-400">🧳</span>
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900 dark:text-white">Packing Tips</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">Beach vacation essentials</div>
-                    </div>
-                  </div>
-                </button>
-                
-                <button
-                  onClick={() => handleQuickAction("Tell me about budget travel tips")}
-                  className="p-4 bg-white dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-200 text-left"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
-                      <span className="text-yellow-600 dark:text-yellow-400">💰</span>
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900 dark:text-white">Budget Travel</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">Money-saving tips</div>
-                    </div>
-                  </div>
-                </button>
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center max-w-md mx-auto px-4">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <span className="text-white text-2xl">✈️</span>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Welcome to Travel Assistant</h2>
+                <p className="text-gray-600 dark:text-gray-400 mb-8">Your AI travel companion ready to help you plan the perfect trip.</p>
               </div>
             </div>
           )}
 
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div className="flex flex-col">
-                <div
-                  className={`max-w-xs lg:max-w-md px-4 py-3 rounded-2xl ${
-                    message.role === "user"
-                      ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white"
-                      : "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-600"
-                  }`}
-                >
-                  <div className="flex items-start space-x-2">
-                    {message.role === "assistant" && (
-                      <div className="w-6 h-6 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-white text-xs">AI</span>
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <div className="text-sm leading-relaxed">
+          <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+            {messages.slice(1).map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              >
+                <div className={`flex items-start space-x-3 max-w-3xl ${message.role === "user" ? "flex-row-reverse space-x-reverse" : ""}`}>
+                  {message.role === "assistant" && (
+                    <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white text-xs font-medium">AI</span>
+                    </div>
+                  )}
+                  {message.role === "user" && (
+                    <div className="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-gray-700 dark:text-gray-300 text-xs font-medium">U</span>
+                    </div>
+                  )}
+                  <div className={`flex-1 ${message.role === "user" ? "text-right" : ""}`}>
+                    <div className={`inline-block px-4 py-3 rounded-2xl max-w-full ${
+                      message.role === "user"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white"
+                    }`}>
+                      <div className="text-sm leading-relaxed whitespace-pre-wrap">
                         {formatMessage(message.content)}
                       </div>
                     </div>
+                    {message.timestamp && (
+                      <div className={`text-xs text-gray-500 dark:text-gray-400 mt-2 ${
+                        message.role === "user" ? "text-right" : "text-left"
+                      }`}>
+                        {formatTimestamp(message.timestamp)}
+                      </div>
+                    )}
                   </div>
                 </div>
-                {message.timestamp && (
-                  <div className={`text-xs text-gray-500 dark:text-gray-400 mt-1 ${
-                    message.role === "user" ? "text-right" : "text-left"
-                  }`}>
-                    {formatTimestamp(message.timestamp)}
-                  </div>
-                )}
               </div>
-            </div>
-          ))}
+            ))}
 
-          {/* Loading Indicator */}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-600 px-4 py-3 rounded-2xl">
-                <div className="flex items-center space-x-2">
-                  <div className="w-6 h-6 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs">AI</span>
+            {/* Loading Indicator */}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-xs font-medium">AI</span>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white px-4 py-3 rounded-2xl">
+                    <div className="flex items-center space-x-2">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      </div>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">Thinking...</span>
                     </div>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">Thinking...</span>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} />
+          </div>
         </div>
 
         {/* Input Area */}
-        <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4">
-          <div className="flex items-end space-x-3">
-            <div className="flex-1 relative">
-              <textarea
-                className={`w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white ${
-                  isLoading ? 'opacity-50 cursor-not-allowed' : ''
+        <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex items-end space-x-3">
+              <div className="flex-1 relative">
+                <textarea
+                  ref={textareaRef}
+                  className={`w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm ${
+                    isLoading ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Message Travel Assistant..."
+                  disabled={isLoading}
+                  rows="1"
+                  style={{ minHeight: '48px', maxHeight: '120px' }}
+                />
+              </div>
+              <button
+                className={`p-3 rounded-xl font-medium transition-all duration-200 ${
+                  isLoading || !input.trim()
+                    ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed text-gray-500'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl'
                 }`}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask me about travel destinations, weather, packing tips..."
-                disabled={isLoading}
-                rows="1"
-                style={{ minHeight: '48px', maxHeight: '120px' }}
-              />
-            </div>
-            <button
-              className={`px-6 py-3 rounded-2xl font-medium transition-all duration-200 ${
-                isLoading
-                  ? 'bg-gray-300 dark:bg-gray-600 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
-              }`}
-              onClick={handleSend}
-              disabled={isLoading || !input.trim()}
-            >
-              {isLoading ? (
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Sending</span>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2">
-                  <span>Send</span>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                onClick={handleSend}
+                disabled={isLoading || !input.trim()}
+              >
+                {isLoading ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                   </svg>
-                </div>
-              )}
-            </button>
+                )}
+              </button>
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
+              Travel Assistant can make mistakes. Consider checking important information.
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Overlay for mobile sidebar */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
     </div>
   );
 }
