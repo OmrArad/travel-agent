@@ -1,0 +1,146 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Express.js Backend Patterns
+
+## Server Architecture
+Follow these patterns for clean, maintainable Express.js applications:
+
+### File Structure
+```
+backend/
+├── index.js              # Server entry point
+├── routes/               # Route definitions
+│   ├── api.js           # API routes
+│   └── health.js        # Health check routes
+├── controllers/          # Business logic
+│   ├── chatController.js
+│   └── weatherController.js
+├── services/            # External integrations
+│   ├── llm.js          # Ollama integration
+│   └── weather.js      # Weather API
+├── middleware/          # Custom middleware
+│   ├── auth.js
+│   ├── validation.js
+│   └── errorHandler.js
+├── utils/              # Helper functions
+│   ├── logger.js
+│   └── validators.js
+└── config/             # Configuration
+    ├── database.js
+    └── environment.js
+```
+
+## Route Organization
+```javascript
+// routes/api.js
+import express from 'express';
+import { chatController } from '../controllers/chatController.js';
+import { validateMessage } from '../middleware/validation.js';
+
+const router = express.Router();
+
+// Group related routes
+router.post('/chat', validateMessage, chatController.sendMessage);
+router.get('/chat/history', chatController.getHistory);
+
+export default router;
+```
+
+## Controller Pattern
+```javascript
+// controllers/chatController.js
+import { llmService } from '../services/llm.js';
+
+export const chatController = {
+  async sendMessage(req, res, next) {
+    try {
+      const { message } = req.body;
+      const response = await llmService.generateResponse(message);
+      
+      res.json({ success: true, data: response });
+    } catch (error) {
+      next(error);
+    }
+  },
+  
+  async getHistory(req, res, next) {
+    try {
+      // Implementation
+    } catch (error) {
+      next(error);
+    }
+  }
+};
+```
+
+## Service Layer
+```javascript
+// services/llm.js
+import axios from 'axios';
+
+class LLMService {
+  constructor() {
+    this.baseURL = process.env.OLLAMA_URL || 'http://localhost:11434';
+  }
+  
+  async generateResponse(message) {
+    try {
+      const response = await axios.post(`${this.baseURL}/api/generate`, {
+        model: 'llama2',
+        prompt: message,
+        stream: false
+      });
+      
+      return response.data.response;
+    } catch (error) {
+      throw new Error(`LLM service error: ${error.message}`);
+    }
+  }
+}
+
+export const llmService = new LLMService();
+```
+
+## Middleware Pattern
+```javascript
+// middleware/errorHandler.js
+export const errorHandler = (err, req, res, next) => {
+  const status = err.status || 500;
+  const message = err.message || 'Internal Server Error';
+  
+  console.error(`Error ${status}: ${message}`);
+  
+  res.status(status).json({
+    success: false,
+    error: {
+      message,
+      status,
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    }
+  });
+};
+```
+
+## Key Files Reference
+- Server entry: [backend/index.js](mdc:backend/index.js)
+- LLM service: [backend/services/llm.js](mdc:backend/services/llm.js)
+- Weather service: [backend/services/weather.js](mdc:backend/services/weather.js)
+
+## Best Practices
+1. **Error Handling**: Always use try-catch and pass errors to next()
+2. **Validation**: Validate input data with middleware
+3. **Logging**: Implement structured logging
+4. **Environment Variables**: Use dotenv for configuration
+5. **Rate Limiting**: Implement rate limiting for API endpoints
+6. **CORS**: Configure CORS properly for frontend integration
+7. **Security**: Use helmet.js for security headers
+
+## DRY Principles in Express
+1. **Extract common middleware** for repeated operations
+2. **Create utility functions** for shared logic
+3. **Use service classes** for external integrations
+4. **Implement base controllers** for common CRUD operations
+5. **Share validation schemas** across routes

@@ -1,5 +1,201 @@
 ---
-description:
-globs:
-alwaysApply: false
+description: 
+globs: 
+alwaysApply: true
 ---
+# Git Workflow and Commit Standards
+
+## Task Completion Workflow
+Always commit relevant changes to git at the end of each task to maintain a clean, traceable development history.
+
+### Commit Frequency
+- **Commit after each completed task** - Don't let changes accumulate
+- **Commit logical units** - Group related changes together
+- **Commit working code** - Ensure the application runs before committing
+- **Commit before major refactoring** - Create a safety checkpoint
+
+### Pre-Commit Checklist
+Before committing, ensure:
+- [ ] Code compiles and runs without errors
+- [ ] All tests pass (if applicable)
+- [ ] No debugging code or console.log statements remain
+- [ ] No sensitive data (API keys, passwords) is included
+- [ ] Changes are focused on a single task or feature
+
+## Commit Message Standards
+
+### Commit Message Format
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
+```
+
+### Types
+- **feat**: New feature
+- **fix**: Bug fix
+- **docs**: Documentation changes
+- **style**: Code style changes (formatting, missing semicolons, etc.)
+- **refactor**: Code refactoring (no functional changes)
+- **test**: Adding or updating tests
+- **chore**: Maintenance tasks, dependencies, etc.
+
+### Examples
+```bash
+# Feature commit
+git commit -m "feat(chat): add ChatGPT-like UI design with sidebar
+
+- Implement responsive sidebar with quick actions
+- Add modern message bubble styling
+- Include dark mode support
+- Fix Tailwind CSS configuration"
+
+# Bug fix commit
+git commit -m "fix(api): resolve Ollama connection timeout issues
+
+- Increase default timeout to 30 seconds
+- Add retry logic for failed requests
+- Improve error handling for network issues"
+
+# Refactor commit
+git commit -m "refactor(components): extract chat logic into custom hook
+
+- Create useChat hook for message management
+- Separate UI logic from business logic
+- Improve component reusability"
+
+# Style commit
+git commit -m "style(frontend): update code formatting and naming conventions
+
+- Apply consistent camelCase naming
+- Fix import order across components
+- Remove unused imports and variables"
+```
+
+## Git Commands for Task Completion
+
+### Check Status
+```bash
+# Always check what files have changed
+git status
+
+# See detailed changes
+git diff
+```
+
+### Stage Changes
+```bash
+# Stage all changes
+git add .
+
+# Stage specific files
+git add frontend/src/App.jsx
+git add backend/services/llm.js
+
+# Stage specific changes in a file
+git add -p frontend/src/App.jsx
+```
+
+### Commit Changes
+```bash
+# Commit with message
+git commit -m "feat(ui): implement modern chat interface"
+
+# Commit with detailed message
+git commit -m "feat(ui): implement modern chat interface
+
+- Add responsive sidebar navigation
+- Implement message bubble design
+- Add dark mode toggle
+- Improve mobile responsiveness"
+```
+
+### Push Changes
+```bash
+# Push to current branch
+git push
+
+# Push to specific branch
+git push origin feature/chat-ui
+```
+
+## Branch Management
+
+### Feature Branches
+- Create feature branches for significant changes
+- Use descriptive branch names: `feature/chat-ui`, `fix/api-timeout`
+- Merge back to main/master when complete
+
+### Branch Naming Convention
+```
+<type>/<description>
+```
+Examples:
+- `feature/chat-ui-redesign`
+- `fix/ollama-connection`
+- `docs/api-documentation`
+- `refactor/component-structure`
+
+## Code Review Integration
+
+### Before Pushing
+- Review your own changes with `git diff`
+- Ensure commit messages are clear and descriptive
+- Test that the application still works correctly
+
+### Pull Request Workflow
+- Create pull requests for significant changes
+- Include clear description of changes
+- Reference related issues or tasks
+- Request review from team members
+
+## Emergency Situations
+
+### Reverting Changes
+```bash
+# Revert last commit (keeps changes in working directory)
+git reset --soft HEAD~1
+
+# Revert last commit (discards changes)
+git reset --hard HEAD~1
+
+# Revert specific commit
+git revert <commit-hash>
+```
+
+### Stashing Changes
+```bash
+# Stash current changes
+git stash
+
+# Stash with description
+git stash push -m "WIP: chat UI improvements"
+
+# Apply stashed changes
+git stash pop
+```
+
+## Best Practices
+
+### Atomic Commits
+- Each commit should represent a single logical change
+- Don't mix unrelated changes in one commit
+- Keep commits focused and small
+
+### Descriptive Messages
+- Use present tense ("add feature" not "added feature")
+- Be specific about what changed
+- Include context when necessary
+
+### Regular Pushes
+- Push changes regularly to avoid losing work
+- Keep local and remote branches in sync
+- Use `git pull` before pushing to avoid conflicts
+
+## Key Files Reference
+- Project root: [README.md](mdc:README.md)
+- Frontend package: [frontend/package.json](mdc:frontend/package.json)
+- Backend package: [backend/package.json](mdc:backend/package.json)
+- Git ignore: [.gitignore](mdc:.gitignore)

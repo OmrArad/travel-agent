@@ -1,0 +1,91 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# React Development Patterns
+
+## Component Structure
+Follow these patterns for clean, maintainable React components:
+
+### Component Organization
+```jsx
+// 1. Imports (external libraries first, then internal)
+import React, { useState, useEffect } from 'react';
+import { sendMessage } from '../api';
+
+// 2. Component definition with clear naming
+export default function ChatMessage({ message, onSend }) {
+  // 3. State declarations
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // 4. Custom hooks
+  const { data, error } = useApiData();
+  
+  // 5. Event handlers
+  const handleSubmit = async (data) => {
+    // Implementation
+  };
+  
+  // 6. Effects
+  useEffect(() => {
+    // Side effects
+  }, [dependencies]);
+  
+  // 7. Render logic
+  if (error) return <ErrorMessage error={error} />;
+  
+  return (
+    <div className="chat-message">
+      {/* JSX */}
+    </div>
+  );
+}
+```
+
+## Custom Hooks
+Extract reusable logic into custom hooks:
+
+```jsx
+// hooks/useChat.js
+export function useChat() {
+  const [messages, setMessages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const sendMessage = async (content) => {
+    // Implementation
+  };
+  
+  return { messages, isLoading, sendMessage };
+}
+```
+
+## State Management
+- Use local state for component-specific data
+- Lift state up when sharing between components
+- Consider context for global state (user, theme, etc.)
+- Use reducers for complex state logic
+
+## Performance Optimization
+- Use `React.memo()` for expensive components
+- Implement `useCallback()` for function props
+- Use `useMemo()` for expensive calculations
+- Lazy load components with `React.lazy()`
+
+## File Naming Conventions
+- Components: `PascalCase.jsx` (e.g., `ChatMessage.jsx`)
+- Hooks: `camelCase.js` (e.g., `useChat.js`)
+- Utils: `camelCase.js` (e.g., `formatMessage.js`)
+- Constants: `UPPER_SNAKE_CASE.js` (e.g., `API_ENDPOINTS.js`)
+
+## Key Files Reference
+- Main App: [frontend/src/App.jsx](mdc:frontend/src/App.jsx)
+- API Client: [frontend/src/api.js](mdc:frontend/src/api.js)
+- Entry Point: [frontend/src/main.jsx](mdc:frontend/src/main.jsx)
+
+## DRY Principles in React
+1. **Extract common UI patterns** into reusable components
+2. **Create custom hooks** for shared logic
+3. **Use utility functions** for repeated operations
+4. **Implement higher-order components** for cross-cutting concerns
+5. **Share constants** across components

@@ -1,0 +1,47 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Travel Agent Project Architecture
+
+## Project Structure
+This is a full-stack travel agent application with React frontend and Express backend, integrated with Ollama for AI capabilities.
+
+### Directory Organization
+- `frontend/` - React application with Vite build system
+- `backend/` - Express.js server with API endpoints
+- `services/` - Business logic and external integrations
+
+## Separation of Concerns
+
+### Frontend Architecture
+- **Components**: Reusable UI components in `frontend/src/components/`
+- **Pages**: Route-level components in `frontend/src/pages/`
+- **Hooks**: Custom React hooks in `frontend/src/hooks/`
+- **Utils**: Utility functions in `frontend/src/utils/`
+- **API**: API client functions in `frontend/src/api.js`
+- **Styles**: CSS modules or styled-components for component-specific styles
+
+### Backend Architecture
+- **Routes**: API route handlers in `backend/routes/`
+- **Controllers**: Business logic in `backend/controllers/`
+- **Services**: External integrations (Ollama, weather APIs) in `backend/services/`
+- **Middleware**: Custom middleware in `backend/middleware/`
+- **Utils**: Helper functions in `backend/utils/`
+- **Config**: Configuration files in `backend/config/`
+
+## Key Files
+- Frontend entry: [frontend/src/main.jsx](mdc:frontend/src/main.jsx)
+- Frontend app: [frontend/src/App.jsx](mdc:frontend/src/App.jsx)
+- Frontend API client: [frontend/src/api.js](mdc:frontend/src/api.js)
+- Backend entry: [backend/index.js](mdc:backend/index.js)
+- Backend LLM service: [backend/services/llm.js](mdc:backend/services/llm.js)
+- Backend weather service: [backend/services/weather.js](mdc:backend/services/weather.js)
+
+## Design Principles
+1. **Single Responsibility**: Each file/module has one clear purpose
+2. **Dependency Injection**: Services are injected rather than directly imported
+3. **Configuration Externalization**: All configs in separate files
+4. **Error Boundaries**: Proper error handling at each layer
+5. **Type Safety**: Use TypeScript or PropTypes for type checking

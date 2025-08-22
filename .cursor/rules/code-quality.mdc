@@ -1,0 +1,248 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Code Quality Standards
+
+## Clean Code Principles
+
+### Naming Conventions
+- **Variables**: `camelCase` (e.g., `userName`, `isLoading`)
+- **Constants**: `UPPER_SNAKE_CASE` (e.g., `API_BASE_URL`)
+- **Functions**: `camelCase` with verb prefixes (e.g., `getUserData`, `handleSubmit`)
+- **Classes**: `PascalCase` (e.g., `UserService`, `ChatController`)
+- **Files**: Match the content type (components: `PascalCase.jsx`, utils: `camelCase.js`)
+
+### Function Design
+```javascript
+// ❌ Bad: Too many responsibilities
+function processUserData(user) {
+  // 100 lines of mixed logic
+}
+
+// ✅ Good: Single responsibility
+function validateUserData(user) {
+  return user && user.email && user.name;
+}
+
+function formatUserData(user) {
+  return {
+    id: user.id,
+    displayName: `${user.firstName} ${user.lastName}`,
+    email: user.email.toLowerCase()
+  };
+}
+
+function saveUserData(user) {
+  return api.post('/users', user);
+}
+```
+
+### Variable Declarations
+```javascript
+// ❌ Bad: Unclear naming
+const d = new Date();
+const u = getUser();
+
+// ✅ Good: Descriptive naming
+const currentDate = new Date();
+const currentUser = getUser();
+
+// ❌ Bad: Magic numbers
+if (status === 1) { /* ... */ }
+
+// ✅ Good: Named constants
+const USER_STATUS = {
+  ACTIVE: 1,
+  INACTIVE: 0
+};
+if (status === USER_STATUS.ACTIVE) { /* ... */ }
+```
+
+## DRY (Don't Repeat Yourself) Principles
+
+### Extract Common Logic
+```javascript
+// ❌ Bad: Repeated validation
+function createUser(userData) {
+  if (!userData.email || !userData.name) {
+    throw new Error('Invalid user data');
+  }
+  // ...
+}
+
+function updateUser(userData) {
+  if (!userData.email || !userData.name) {
+    throw new Error('Invalid user data');
+  }
+  // ...
+}
+
+// ✅ Good: Extracted validation
+const validateUserData = (userData) => {
+  if (!userData.email || !userData.name) {
+    throw new Error('Invalid user data');
+  }
+};
+
+function createUser(userData) {
+  validateUserData(userData);
+  // ...
+}
+
+function updateUser(userData) {
+  validateUserData(userData);
+  // ...
+}
+```
+
+### Utility Functions
+```javascript
+// utils/dateHelpers.js
+export const formatDate = (date) => {
+  return new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }).format(date);
+};
+
+export const isToday = (date) => {
+  const today = new Date();
+  return date.toDateString() === today.toDateString();
+};
+```
+
+## Error Handling
+
+### Consistent Error Patterns
+```javascript
+// ❌ Bad: Inconsistent error handling
+function fetchData() {
+  try {
+    return api.get('/data');
+  } catch (error) {
+    console.log('Error:', error);
+    return null;
+  }
+}
+
+// ✅ Good: Consistent error handling
+class ApiError extends Error {
+  constructor(message, status, code) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+function fetchData() {
+  try {
+    return api.get('/data');
+  } catch (error) {
+    throw new ApiError(
+      'Failed to fetch data',
+      error.response?.status || 500,
+      'FETCH_ERROR'
+    );
+  }
+}
+```
+
+## Code Organization
+
+### Import Order
+```javascript
+// 1. External libraries
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+// 2. Internal modules
+import { apiService } from '../services/api';
+import { formatDate } from '../utils/dateHelpers';
+
+// 3. Relative imports
+import './Component.css';
+```
+
+### File Structure
+```javascript
+// Component file structure
+import React from 'react';
+
+// Constants
+const DEFAULT_TIMEOUT = 5000;
+
+// Component
+export default function Component({ prop1, prop2 }) {
+  // State
+  const [state, setState] = useState();
+  
+  // Effects
+  useEffect(() => {
+    // Effect logic
+  }, []);
+  
+  // Event handlers
+  const handleClick = () => {
+    // Handler logic
+  };
+  
+  // Render
+  return <div>Content</div>;
+}
+```
+
+## Performance Considerations
+
+### React Optimization
+```javascript
+// ❌ Bad: Recreating functions on every render
+function Component({ data }) {
+  const handleClick = () => {
+    processData(data);
+  };
+  
+  return <button onClick={handleClick}>Click</button>;
+}
+
+// ✅ Good: Memoized functions
+function Component({ data }) {
+  const handleClick = useCallback(() => {
+    processData(data);
+  }, [data]);
+  
+  return <button onClick={handleClick}>Click</button>;
+}
+```
+
+### Backend Optimization
+```javascript
+// ❌ Bad: N+1 query problem
+async function getUsersWithPosts() {
+  const users = await User.find();
+  for (const user of users) {
+    user.posts = await Post.find({ userId: user.id });
+  }
+  return users;
+}
+
+// ✅ Good: Single query with population
+async function getUsersWithPosts() {
+  return await User.find().populate('posts');
+}
+```
+
+## Testing Considerations
+- Write unit tests for utility functions
+- Test error scenarios
+- Mock external dependencies
+- Use descriptive test names
+- Follow AAA pattern (Arrange, Act, Assert)
+
+## Documentation
+- Use JSDoc for function documentation
+- Include examples in README files
+- Document API endpoints
+- Keep comments up-to-date with code changes

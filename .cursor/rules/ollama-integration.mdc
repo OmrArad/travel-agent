@@ -1,0 +1,198 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Ollama Integration Patterns
+
+## Service Architecture
+Ollama integration should follow a clean service pattern with proper error handling and configuration management.
+
+### Service Structure
+```javascript
+// services/llm.js
+import axios from 'axios';
+
+class OllamaService {
+  constructor() {
+    this.baseURL = process.env.OLLAMA_URL || 'http://localhost:11434';
+    this.defaultModel = process.env.OLLAMA_MODEL || 'llama2';
+    this.timeout = parseInt(process.env.OLLAMA_TIMEOUT) || 30000;
+  }
+  
+  async generateResponse(prompt, options = {}) {
+    try {
+      const response = await axios.post(`${this.baseURL}/api/generate`, {
+        model: options.model || this.defaultModel,
+        prompt: this.formatPrompt(prompt),
+        stream: false,
+        options: {
+          temperature: options.temperature || 0.7,
+          top_p: options.top_p || 0.9,
+          max_tokens: options.maxTokens || 2048
+        }
+      }, {
+        timeout: this.timeout
+      });
+      
+      return response.data.response;
+    } catch (error) {
+      throw new OllamaError(
+        'Failed to generate response',
+        error.response?.status || 500,
+        error.message
+      );
+    }
+  }
+  
+  formatPrompt(prompt) {
+    return `You are a helpful travel assistant. Please provide helpful, accurate, and concise responses about travel-related questions.
+
+User: ${prompt}
+Assistant:`;
+  }
+}
+
+class OllamaError extends Error {
+  constructor(message, status, originalError) {
+    super(message);
+    this.status = status;
+    this.originalError = originalError;
+    this.name = 'OllamaError';
+  }
+}
+
+export const ollamaService = new OllamaService();
+```
+
+## Controller Integration
+```javascript
+// controllers/chatController.js
+import { ollamaService } from '../services/llm.js';
+import { validateMessage } from '../utils/validators.js';
+
+export const chatController = {
+  async sendMessage(req, res, next) {
+    try {
+      const { message, options } = req.body;
+      
+      // Validate input
+      const validation = validateMessage(message);
+      if (!validation.isValid) {
+        return res.status(400).json({
+          success: false,
+          error: validation.errors
+        });
+      }
+      
+      // Generate response
+      const response = await ollamaService.generateResponse(message, options);
+      
+      res.json({
+        success: true,
+        data: {
+          message: response,
+          timestamp: new Date().toISOString()
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+};
+```
+
+## Error Handling
+```javascript
+// middleware/errorHandler.js
+export const handleOllamaError = (error, req, res, next) => {
+  if (error.name === 'OllamaError') {
+    return res.status(error.status).json({
+      success: false,
+      error: {
+        message: 'AI service temporarily unavailable',
+        code: 'OLLAMA_ERROR',
+        details: process.env.NODE_ENV === 'development' ? error.originalError : undefined
+      }
+    });
+  }
+  next(error);
+};
+```
+
+## Configuration Management
+```javascript
+// config/ollama.js
+export const ollamaConfig = {
+  url: process.env.OLLAMA_URL || 'http://localhost:11434',
+  model: process.env.OLLAMA_MODEL || 'llama2',
+  timeout: parseInt(process.env.OLLAMA_TIMEOUT) || 30000,
+  maxTokens: parseInt(process.env.OLLAMA_MAX_TOKENS) || 2048,
+  temperature: parseFloat(process.env.OLLAMA_TEMPERATURE) || 0.7,
+  topP: parseFloat(process.env.OLLAMA_TOP_P) || 0.9
+};
+```
+
+## Frontend Integration
+```javascript
+// frontend/src/api.js
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+export const sendMessage = async (message, options = {}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message, options })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data.data.message;
+  } catch (error) {
+    console.error('Error sending message:', error);
+    throw new Error('Failed to get response from AI assistant');
+  }
+};
+```
+
+## Best Practices
+
+### Prompt Engineering
+- Use clear, specific prompts
+- Include context when relevant
+- Set appropriate temperature for creativity vs consistency
+- Implement prompt templates for common use cases
+
+### Performance Optimization
+- Implement request caching for similar queries
+- Use streaming for long responses
+- Set appropriate timeouts
+- Monitor response times and quality
+
+### Security Considerations
+- Validate all user inputs
+- Sanitize prompts to prevent injection attacks
+- Implement rate limiting
+- Log interactions for monitoring
+
+### Environment Variables
+```bash
+# .env
+OLLAMA_URL=http://localhost:11434
+OLLAMA_MODEL=llama2
+OLLAMA_TIMEOUT=30000
+OLLAMA_MAX_TOKENS=2048
+OLLAMA_TEMPERATURE=0.7
+OLLAMA_TOP_P=0.9
+```
+
+## Key Files Reference
+- LLM service: [backend/services/llm.js](mdc:backend/services/llm.js)
+- Frontend API: [frontend/src/api.js](mdc:frontend/src/api.js)
+- Backend entry: [backend/index.js](mdc:backend/index.js)
