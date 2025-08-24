@@ -26,6 +26,71 @@ function needsChainOfThought(message) {
   return complexQueryKeywords.some(keyword => lowerMessage.includes(keyword));
 }
 
+// Function to detect follow-up questions that reference previous context
+function isFollowUpQuestion(message, history) {
+  const followUpIndicators = [
+    'what about', 'how about', 'what if', 'can you', 'could you',
+    'tell me more', 'explain', 'elaborate', 'give me', 'show me',
+    'and', 'also', 'additionally', 'furthermore', 'moreover',
+    'what else', 'anything else', 'other options', 'alternatives'
+  ];
+  
+  const lowerMessage = message.toLowerCase();
+  const hasFollowUpIndicator = followUpIndicators.some(indicator => 
+    lowerMessage.includes(indicator)
+  );
+  
+  // Check if this is a short question (likely a follow-up)
+  const isShortQuestion = message.split(' ').length <= 15;
+  
+  // Check if there's recent conversation history
+  const hasRecentHistory = history.length > 0;
+  
+  return hasFollowUpIndicator || (isShortQuestion && hasRecentHistory);
+}
+
+// Function to determine if recent conversation was complex
+function hasRecentComplexConversation(history) {
+  if (history.length === 0) return false;
+  
+  // Look at the last few messages to see if there was a complex query
+  const recentMessages = history.slice(-4); // Last 4 messages (2 exchanges)
+  
+  return recentMessages.some(msg => 
+    msg.role === 'user' && needsChainOfThought(msg.content)
+  );
+}
+
+// Function to calculate appropriate timeout based on context
+function calculateTimeout(message, history) {
+  const isComplex = needsChainOfThought(message);
+  const isFollowUp = isFollowUpQuestion(message, history);
+  const hadComplexRecent = hasRecentComplexConversation(history);
+  
+  // Base timeouts (in milliseconds) - configurable via environment variables
+  const baseTimeouts = {
+    simple: parseInt(process.env.OLLAMA_TIMEOUT_SIMPLE) || 120000,    // 2 minutes
+    complex: parseInt(process.env.OLLAMA_TIMEOUT_COMPLEX) || 180000,   // 3 minutes
+    followUp: parseInt(process.env.OLLAMA_TIMEOUT_FOLLOWUP) || 150000,  // 2.5 minutes
+    followUpAfterComplex: parseInt(process.env.OLLAMA_TIMEOUT_FOLLOWUP_COMPLEX) || 240000  // 4 minutes
+  };
+  
+  // Determine timeout based on context
+  if (isFollowUp && hadComplexRecent) {
+    console.log("⏱️ Using extended timeout for follow-up after complex conversation");
+    return baseTimeouts.followUpAfterComplex;
+  } else if (isFollowUp) {
+    console.log("⏱️ Using extended timeout for follow-up question");
+    return baseTimeouts.followUp;
+  } else if (isComplex) {
+    console.log("⏱️ Using extended timeout for complex query");
+    return baseTimeouts.complex;
+  } else {
+    console.log("⏱️ Using standard timeout for simple query");
+    return baseTimeouts.simple;
+  }
+}
+
 // Function to extract city name from weather query
 function extractCityFromWeatherQuery(message) {
   // Simple pattern matching - can be improved with NLP
@@ -139,7 +204,7 @@ export async function askLLM(history, userMessage) {
   try {
     // Create AbortController for timeout - longer timeout for complex queries
     const controller = new AbortController();
-    const timeout = useChainOfThought ? 180000 : 120000; // 3 minutes for complex queries, 2 minutes for simple
+    const timeout = calculateTimeout(userMessage, history);
     const timeoutId = setTimeout(() => controller.abort(), timeout);
 
     const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
@@ -174,8 +239,9 @@ export async function askLLM(history, userMessage) {
   } catch (error) {
     console.error("❌ Error calling Ollama:", error);
     if (error.name === 'AbortError') {
-      const timeoutMinutes = useChainOfThought ? 3 : 2;
-      throw new Error(`Request to Ollama timed out after ${timeoutMinutes} minutes`);
+      const timeoutMs = calculateTimeout(userMessage, history);
+      const timeoutMinutes = Math.round(timeoutMs / 60000 * 10) / 10; // Round to 1 decimal place
+      throw new Error(`Request to Ollama timed out after ${timeoutMinutes} minutes. This timeout was automatically adjusted based on your question type.`);
     }
     throw new Error(`Failed to get response from Ollama: ${error.message}`);
   }

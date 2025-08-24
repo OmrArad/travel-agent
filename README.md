@@ -25,6 +25,14 @@ The assistant uses function calling to access real-time weather data:
 - Provides detailed weather information including temperature, humidity, wind speed, and "feels like" temperature
 - Works with any city name (e.g., "What's the weather in Paris?", "How's the weather in Tokyo?")
 
+### Intelligent Timeout System
+The assistant automatically adjusts response timeouts based on question complexity and context:
+- **Simple queries**: 2 minutes (e.g., "What's the weather in Paris?")
+- **Complex queries**: 3 minutes (e.g., "Plan a 7-day itinerary for Japan")
+- **Follow-up questions**: 2.5 minutes (e.g., "What about restaurants?")
+- **Follow-ups after complex queries**: 4 minutes (e.g., "Can you add more details?" after a complex planning request)
+- All timeouts are configurable via environment variables
+
 ### How to Run
 1. Clone repo
 2. `cd backend && npm install`
@@ -33,6 +41,12 @@ The assistant uses function calling to access real-time weather data:
    OLLAMA_BASE_URL=http://localhost:11434
    OLLAMA_MODEL=llama3:latest
    OPENWEATHER_KEY=your_openweather_api_key_here
+   
+   # Timeout configurations (in milliseconds)
+   OLLAMA_TIMEOUT_SIMPLE=120000        # 2 minutes for simple queries
+   OLLAMA_TIMEOUT_COMPLEX=180000       # 3 minutes for complex queries
+   OLLAMA_TIMEOUT_FOLLOWUP=150000      # 2.5 minutes for follow-up questions
+   OLLAMA_TIMEOUT_FOLLOWUP_COMPLEX=240000  # 4 minutes for follow-ups after complex queries
    ```
 4. `node index.js`
 5. `cd frontend && npm install && npm start`
