@@ -13,6 +13,17 @@
 
 **Why this approach:** Complex travel planning requires step-by-step reasoning to break down budgets, logistics, and trade-offs. Simple queries like weather don't need this depth and benefit from direct, concise responses.
 
+## Prompt Architecture (DRY Principle)
+- **Base prompt:** Contains all shared sections (Travel-Only Policy, Hallucination Prevention, Conversation Guidelines, Follow-up Questions)
+- **Specialized prompts:** Chain-of-thought and Standard prompts extend the base prompt with their unique requirements
+- **Single source of truth:** Common guidelines are maintained in one place, reducing duplication and maintenance overhead
+
+**Why this approach:** 
+- **Maintainability:** Changes to shared guidelines only need to be made in one place
+- **Consistency:** Ensures both prompt types have identical core instructions
+- **Readability:** Clear separation between common and specialized prompt sections
+- **DRY compliance:** Eliminates code duplication while preserving functionality
+
 ## Response Structure
 - **Consistent formatting:** Markdown with emojis for readability
 - **Follow-up questions:** Include 1-2 natural follow-ups when they add value
