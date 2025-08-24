@@ -3,25 +3,6 @@ import { getWeather } from "./weather.js";
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 
-// Track active request for cancellation
-let activeRequest = null;
-
-// Function to cancel active request
-export function cancelActiveRequest() {
-  if (activeRequest && activeRequest.controller) {
-    console.log("🛑 Cancelling active request");
-    activeRequest.controller.abort();
-    activeRequest = null;
-    return true;
-  }
-  return false;
-}
-
-// Function to get active request info
-export function getActiveRequestInfo() {
-  return activeRequest;
-}
-
 // Function to detect if a message is asking about weather
 function isWeatherQuery(message) {
   const weatherKeywords = [
@@ -386,16 +367,8 @@ export async function askLLM(history, userMessage) {
 
   console.log("🔵 Sending to Ollama:", JSON.stringify(messages, null, 2));
 
-  // Cancel any existing request before starting a new one
-  cancelActiveRequest();
-
-  // Create AbortController for this request
-  const controller = new AbortController();
-  activeRequest = { controller, startTime: Date.now() };
-  
-  console.log("🔄 Starting new request");
-
   try {
+    // Remove timeout and AbortController logic
     const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
       method: "POST",
       headers: {
@@ -410,8 +383,7 @@ export async function askLLM(history, userMessage) {
           top_p: 0.9,
           max_tokens: 4096
         }
-      }),
-      signal: controller.signal
+      })
     });
 
     if (!response.ok) {
@@ -427,19 +399,14 @@ export async function askLLM(history, userMessage) {
       throw new Error("Invalid response format from Ollama");
     }
 
-    // Clear active request on success
-    activeRequest = null;
-    console.log("✅ Request completed successfully");
-
     return data.message.content;
   } catch (error) {
     console.error("❌ Error calling Ollama:", error);
-    
-    // Clear active request on error
-    activeRequest = null;
-    
     if (error.name === 'AbortError') {
-      throw new Error('Request was cancelled');
+      // No longer using timeout, so this block is effectively removed
+      // const timeoutMs = calculateTimeout(userMessage, history);
+      // const timeoutMinutes = Math.round(timeoutMs / 60000 * 10) / 10; // Round to 1 decimal place
+      // throw new Error(`Request to Ollama timed out after ${timeoutMinutes} minutes. This timeout was automatically adjusted based on your question type.`);
     }
     throw new Error(`Failed to get response from Ollama: ${error.message}`);
   }

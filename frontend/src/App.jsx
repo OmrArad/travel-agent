@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { sendMessage, createNewChat, cancelRequest } from "./api";
+import { sendMessage, createNewChat } from "./api";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -90,13 +90,7 @@ export default function App() {
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      
-      // Handle cancellation differently
-      if (error.message.includes('cancelled') || error.message.includes('Request was cancelled')) {
-        setMessages((prev) => [...prev, { role: "assistant", content: "Request was cancelled.", timestamp: new Date() }]);
-      } else {
-        setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again.", timestamp: new Date() }]);
-      }
+      setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again.", timestamp: new Date() }]);
     } finally {
       setIsLoading(false);
     }
@@ -192,11 +186,6 @@ export default function App() {
 
   const clearChat = async () => {
     try {
-      // Cancel any active request before starting new chat
-      if (isLoading) {
-        await cancelRequest();
-      }
-      
       // Create a new chat session
       const newSessionId = await createNewChat();
       setSessionId(newSessionId);
@@ -222,17 +211,6 @@ export default function App() {
         }
       ]);
       setSessionId(null);
-    }
-  };
-
-  const cancelCurrentRequest = async () => {
-    if (!isLoading) return;
-    
-    try {
-      await cancelRequest();
-      console.log("🛑 Cancelled current request");
-    } catch (error) {
-      console.error("Error cancelling request:", error);
     }
   };
 
@@ -461,21 +439,6 @@ export default function App() {
                   style={{ minHeight: '48px', maxHeight: '120px' }}
                 />
               </div>
-              
-              {/* Cancel button when loading */}
-              {isLoading && (
-                <button
-                  className="p-3 rounded-xl font-medium transition-all duration-200 bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl"
-                  onClick={cancelCurrentRequest}
-                  title="Cancel request"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-              
-              {/* Send button */}
               <button
                 className={`p-3 rounded-xl font-medium transition-all duration-200 ${
                   isLoading || !input.trim()
