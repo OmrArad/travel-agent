@@ -1,7 +1,39 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { sendMessage } from "./api";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+
+// Error boundary component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("React Error Boundary caught an error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          <h2>Something went wrong.</h2>
+          <details className="mt-2">
+            <summary>Error details</summary>
+            <pre className="mt-2 text-xs">{this.state.error?.toString()}</pre>
+          </details>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 export default function App() {
   const [messages, setMessages] = useState([
@@ -35,6 +67,7 @@ export default function App() {
 
   const handleSend = async () => {
     if (!input.trim()) return;
+    
     const newMsg = { role: "user", content: input, timestamp: new Date() };
     setMessages([...messages, newMsg]);
     setInput("");
@@ -42,7 +75,13 @@ export default function App() {
 
     try {
       const response = await sendMessage(input);
-      setMessages((prev) => [...prev, { role: "assistant", content: response, timestamp: new Date() }]);
+      
+      if (!response) {
+        throw new Error("Empty response from API");
+      }
+      
+      const assistantMsg = { role: "assistant", content: response, timestamp: new Date() };
+      setMessages((prev) => [...prev, assistantMsg]);
     } catch (error) {
       console.error("Error sending message:", error);
       setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again.", timestamp: new Date() }]);
@@ -87,38 +126,36 @@ export default function App() {
       return content;
     }
     
-    // For assistant messages, render markdown
+    // For assistant messages, render markdown with error handling
     return (
-      <ReactMarkdown 
-        remarkPlugins={[remarkGfm]}
-        className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-gray-900 dark:prose-headings:text-white prose-p:text-gray-700 dark:prose-p:text-gray-300 prose-strong:text-gray-900 dark:prose-strong:text-white prose-code:text-gray-800 dark:prose-code:text-gray-200 prose-pre:bg-gray-100 dark:prose-pre:bg-gray-700 prose-blockquote:border-blue-500"
-        components={{
-          // Custom styling for different markdown elements
-          h1: ({node, ...props}) => <h1 className="text-xl font-bold mb-3" {...props} />,
-          h2: ({node, ...props}) => <h2 className="text-lg font-semibold mb-2" {...props} />,
-          h3: ({node, ...props}) => <h3 className="text-base font-medium mb-2" {...props} />,
-          p: ({node, ...props}) => <p className="mb-2 leading-relaxed" {...props} />,
-          ul: ({node, ...props}) => <ul className="list-disc list-inside mb-3 space-y-1" {...props} />,
-          ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-3 space-y-1" {...props} />,
-          li: ({node, ...props}) => <li className="leading-relaxed" {...props} />,
-          code: ({node, inline, ...props}) => 
-            inline ? (
-              <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono" {...props} />
-            ) : (
-              <code className="block bg-gray-100 dark:bg-gray-700 p-3 rounded-lg text-sm font-mono overflow-x-auto" {...props} />
-            ),
-          pre: ({node, ...props}) => <pre className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg overflow-x-auto mb-3" {...props} />,
-          blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-600 dark:text-gray-300 mb-3" {...props} />,
-          strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
-          em: ({node, ...props}) => <em className="italic" {...props} />,
-          a: ({node, ...props}) => <a className="text-blue-600 dark:text-blue-400 hover:underline" {...props} />,
-          table: ({node, ...props}) => <table className="min-w-full border border-gray-300 dark:border-gray-600 mb-3" {...props} />,
-          th: ({node, ...props}) => <th className="border border-gray-300 dark:border-gray-600 px-3 py-2 bg-gray-50 dark:bg-gray-700 font-semibold" {...props} />,
-          td: ({node, ...props}) => <td className="border border-gray-300 dark:border-gray-600 px-3 py-2" {...props} />,
-        }}
-      >
-        {content}
-      </ReactMarkdown>
+      <ErrorBoundary>
+        <ReactMarkdown 
+          remarkPlugins={[remarkGfm]}
+          className="prose prose-sm max-w-none dark:prose-invert"
+          components={{
+            // Simplified but functional components
+            h1: ({children}) => <h1 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">{children}</h1>,
+            h2: ({children}) => <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">{children}</h2>,
+            h3: ({children}) => <h3 className="text-base font-medium mb-2 text-gray-900 dark:text-white">{children}</h3>,
+            p: ({children}) => <p className="mb-2 leading-relaxed text-gray-700 dark:text-gray-300">{children}</p>,
+            ul: ({children}) => <ul className="list-disc list-inside mb-3 space-y-1 text-gray-700 dark:text-gray-300">{children}</ul>,
+            ol: ({children}) => <ol className="list-decimal list-inside mb-3 space-y-1 text-gray-700 dark:text-gray-300">{children}</ol>,
+            li: ({children}) => <li className="leading-relaxed">{children}</li>,
+            strong: ({children}) => <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>,
+            em: ({children}) => <em className="italic">{children}</em>,
+            code: ({children, inline}) => 
+              inline ? (
+                <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono text-gray-800 dark:text-gray-200">{children}</code>
+              ) : (
+                <code className="block bg-gray-100 dark:bg-gray-700 p-3 rounded-lg text-sm font-mono overflow-x-auto text-gray-800 dark:text-gray-200">{children}</code>
+              ),
+            pre: ({children}) => <pre className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg overflow-x-auto mb-3">{children}</pre>,
+            blockquote: ({children}) => <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-600 dark:text-gray-300 mb-3">{children}</blockquote>,
+          }}
+        >
+          {content}
+        </ReactMarkdown>
+      </ErrorBoundary>
     );
   };
 
