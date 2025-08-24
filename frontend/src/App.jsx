@@ -199,7 +199,7 @@ export default function App() {
         }
       ]);
       
-      console.log("🆕 Started new chat session:", newSessionId);
+      console.log("🆕 Started new chat session");
     } catch (error) {
       console.error("Error creating new chat:", error);
       // Fallback: just reset messages locally
@@ -330,13 +330,10 @@ export default function App() {
             </div>
           </div>
           
-          {/* Session Info */}
+          {/* Message count - optional */}
           <div className="flex items-center space-x-3">
-            {sessionId && (
+            {messages.length > 1 && (
               <div className="hidden md:flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
-                <span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-                  Session: {sessionId.slice(-8)}
-                </span>
                 <span className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">
                   {messages.length - 1} messages
                 </span>
