@@ -61,35 +61,8 @@ function hasRecentComplexConversation(history) {
   );
 }
 
-// Function to calculate appropriate timeout based on context
-function calculateTimeout(message, history) {
-  const isComplex = needsChainOfThought(message);
-  const isFollowUp = isFollowUpQuestion(message, history);
-  const hadComplexRecent = hasRecentComplexConversation(history);
-  
-  // Base timeouts (in milliseconds) - configurable via environment variables
-  const baseTimeouts = {
-    simple: parseInt(process.env.OLLAMA_TIMEOUT_SIMPLE) || 120000,    // 2 minutes
-    complex: parseInt(process.env.OLLAMA_TIMEOUT_COMPLEX) || 180000,   // 3 minutes
-    followUp: parseInt(process.env.OLLAMA_TIMEOUT_FOLLOWUP) || 150000,  // 2.5 minutes
-    followUpAfterComplex: parseInt(process.env.OLLAMA_TIMEOUT_FOLLOWUP_COMPLEX) || 240000  // 4 minutes
-  };
-  
-  // Determine timeout based on context
-  if (isFollowUp && hadComplexRecent) {
-    console.log("⏱️ Using extended timeout for follow-up after complex conversation");
-    return baseTimeouts.followUpAfterComplex;
-  } else if (isFollowUp) {
-    console.log("⏱️ Using extended timeout for follow-up question");
-    return baseTimeouts.followUp;
-  } else if (isComplex) {
-    console.log("⏱️ Using extended timeout for complex query");
-    return baseTimeouts.complex;
-  } else {
-    console.log("⏱️ Using standard timeout for simple query");
-    return baseTimeouts.simple;
-  }
-}
+// Timeout constraints removed for home assignment
+// Allow LLM to take as much time as needed for complete responses
 
 // Function to detect duplicate or very similar messages
 function isDuplicateMessage(message, history, threshold = 0.8) {
@@ -234,6 +207,12 @@ You are a helpful Travel Assistant. For complex questions, use this structured a
 
 Always show your reasoning process clearly using markdown formatting.
 
+## Conversation Guidelines:
+- Use direct address (you, your) instead of third person (the user, they)
+- Maintain conversation context and reference previous messages when relevant
+- Build on previous recommendations and suggestions
+- Keep the conversation flowing naturally
+
 ## Follow-up Questions:
 After providing your main response, always include 2-3 relevant follow-up questions or suggestions that could help the user continue the conversation. These should be:
 - Related to the topic discussed
@@ -273,6 +252,12 @@ You are a helpful Travel Assistant with access to weather information.
 - Structure responses with clear sections using markdown headers
 - Use tables when presenting comparison data
 - Provide actionable recommendations with clear formatting
+
+## Conversation Guidelines:
+- Use direct address (you, your) instead of third person (the user, they)
+- Maintain conversation context and reference previous messages when relevant
+- Build on previous recommendations and suggestions
+- Keep the conversation flowing naturally
 
 ## Follow-up Questions:
 After providing your main response, always include 2-3 relevant follow-up questions or suggestions that could help the user continue the conversation. These should be:
@@ -338,11 +323,7 @@ export async function askLLM(history, userMessage) {
   console.log("🔵 Sending to Ollama:", JSON.stringify(messages, null, 2));
 
   try {
-    // Create AbortController for timeout - longer timeout for complex queries
-    const controller = new AbortController();
-    const timeout = calculateTimeout(userMessage, history);
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-
+    // Remove timeout and AbortController logic
     const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
       method: "POST",
       headers: {
@@ -351,12 +332,14 @@ export async function askLLM(history, userMessage) {
       body: JSON.stringify({
         model: process.env.OLLAMA_MODEL || "llama3:latest",
         messages: messages,
-        stream: false
-      }),
-      signal: controller.signal
+        stream: false,
+        options: {
+          temperature: 0.7, // Default temperature
+          top_p: 0.9,
+          max_tokens: 4096
+        }
+      })
     });
-
-    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -375,9 +358,10 @@ export async function askLLM(history, userMessage) {
   } catch (error) {
     console.error("❌ Error calling Ollama:", error);
     if (error.name === 'AbortError') {
-      const timeoutMs = calculateTimeout(userMessage, history);
-      const timeoutMinutes = Math.round(timeoutMs / 60000 * 10) / 10; // Round to 1 decimal place
-      throw new Error(`Request to Ollama timed out after ${timeoutMinutes} minutes. This timeout was automatically adjusted based on your question type.`);
+      // No longer using timeout, so this block is effectively removed
+      // const timeoutMs = calculateTimeout(userMessage, history);
+      // const timeoutMinutes = Math.round(timeoutMs / 60000 * 10) / 10; // Round to 1 decimal place
+      // throw new Error(`Request to Ollama timed out after ${timeoutMinutes} minutes. This timeout was automatically adjusted based on your question type.`);
     }
     throw new Error(`Failed to get response from Ollama: ${error.message}`);
   }
