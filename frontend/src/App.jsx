@@ -90,14 +90,7 @@ export default function App() {
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      
-      // Handle cancellation differently - don't show error message for cancelled requests
-      if (error.message.includes('cancelled') || error.message.includes('Request was cancelled')) {
-        // Just stop loading without adding an error message
-        console.log("Request was cancelled");
-      } else {
-        setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again.", timestamp: new Date() }]);
-      }
+      setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again.", timestamp: new Date() }]);
     } finally {
       setIsLoading(false);
     }
@@ -128,13 +121,7 @@ export default function App() {
         })
         .catch(error => {
           console.error("Error sending message:", error);
-          
-          // Handle cancellation differently
-          if (error.message.includes('cancelled') || error.message.includes('Request was cancelled')) {
-            console.log("Request was cancelled");
-          } else {
-            setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again.", timestamp: new Date() }]);
-          }
+          setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again.", timestamp: new Date() }]);
         })
         .finally(() => {
           setIsLoading(false);
