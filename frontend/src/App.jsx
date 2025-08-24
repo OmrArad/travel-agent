@@ -129,32 +129,33 @@ export default function App() {
     // For assistant messages, render markdown with error handling
     return (
       <ErrorBoundary>
-        <ReactMarkdown 
-          remarkPlugins={[remarkGfm]}
-          className="prose prose-sm max-w-none dark:prose-invert"
-          components={{
-            // Simplified but functional components
-            h1: ({children}) => <h1 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">{children}</h1>,
-            h2: ({children}) => <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">{children}</h2>,
-            h3: ({children}) => <h3 className="text-base font-medium mb-2 text-gray-900 dark:text-white">{children}</h3>,
-            p: ({children}) => <p className="mb-2 leading-relaxed text-gray-700 dark:text-gray-300">{children}</p>,
-            ul: ({children}) => <ul className="list-disc list-inside mb-3 space-y-1 text-gray-700 dark:text-gray-300">{children}</ul>,
-            ol: ({children}) => <ol className="list-decimal list-inside mb-3 space-y-1 text-gray-700 dark:text-gray-300">{children}</ol>,
-            li: ({children}) => <li className="leading-relaxed">{children}</li>,
-            strong: ({children}) => <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>,
-            em: ({children}) => <em className="italic">{children}</em>,
-            code: ({children, inline}) => 
-              inline ? (
-                <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono text-gray-800 dark:text-gray-200">{children}</code>
-              ) : (
-                <code className="block bg-gray-100 dark:bg-gray-700 p-3 rounded-lg text-sm font-mono overflow-x-auto text-gray-800 dark:text-gray-200">{children}</code>
-              ),
-            pre: ({children}) => <pre className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg overflow-x-auto mb-3">{children}</pre>,
-            blockquote: ({children}) => <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-600 dark:text-gray-300 mb-3">{children}</blockquote>,
-          }}
-        >
-          {content}
-        </ReactMarkdown>
+        <div className="prose prose-sm max-w-none dark:prose-invert">
+          <ReactMarkdown 
+            remarkPlugins={[remarkGfm]}
+            components={{
+              // Apply styling through components
+              h1: ({children}) => <h1 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">{children}</h1>,
+              h2: ({children}) => <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">{children}</h2>,
+              h3: ({children}) => <h3 className="text-base font-medium mb-2 text-gray-900 dark:text-white">{children}</h3>,
+              p: ({children}) => <p className="mb-2 leading-relaxed text-gray-700 dark:text-gray-300">{children}</p>,
+              ul: ({children}) => <ul className="list-disc list-inside mb-3 space-y-1 text-gray-700 dark:text-gray-300">{children}</ul>,
+              ol: ({children}) => <ol className="list-decimal list-inside mb-3 space-y-1 text-gray-700 dark:text-gray-300">{children}</ol>,
+              li: ({children}) => <li className="leading-relaxed">{children}</li>,
+              strong: ({children}) => <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>,
+              em: ({children}) => <em className="italic">{children}</em>,
+              code: ({children, inline}) => 
+                inline ? (
+                  <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono text-gray-800 dark:text-gray-200">{children}</code>
+                ) : (
+                  <code className="block bg-gray-100 dark:bg-gray-700 p-3 rounded-lg text-sm font-mono overflow-x-auto text-gray-800 dark:text-gray-200">{children}</code>
+                ),
+              pre: ({children}) => <pre className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg overflow-x-auto mb-3">{children}</pre>,
+              blockquote: ({children}) => <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-600 dark:text-gray-300 mb-3">{children}</blockquote>,
+            }}
+          >
+            {content}
+          </ReactMarkdown>
+        </div>
       </ErrorBoundary>
     );
   };
