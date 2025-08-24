@@ -90,3 +90,5 @@ temp/
 .Trashes
 ehthumbs.db
 Thumbs.db 
+# Documentation files (not tracked)
+docs/*.pdf
