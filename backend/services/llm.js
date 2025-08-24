@@ -3,6 +3,20 @@ import { getWeather } from "./weather.js";
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 
+// Simple request tracking for cancellation
+let currentRequest = null;
+
+// Function to cancel current request
+export function cancelCurrentRequest() {
+  if (currentRequest && currentRequest.controller) {
+    console.log("🛑 Cancelling current request");
+    currentRequest.controller.abort();
+    currentRequest = null;
+    return true;
+  }
+  return false;
+}
+
 // Function to detect if a message is asking about weather
 function isWeatherQuery(message) {
   const weatherKeywords = [
@@ -367,8 +381,14 @@ export async function askLLM(history, userMessage) {
 
   console.log("🔵 Sending to Ollama:", JSON.stringify(messages, null, 2));
 
+  // Cancel any existing request before starting a new one
+  cancelCurrentRequest();
+
+  // Create AbortController for this request
+  const controller = new AbortController();
+  currentRequest = { controller };
+
   try {
-    // Remove timeout and AbortController logic
     const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
       method: "POST",
       headers: {
@@ -383,7 +403,8 @@ export async function askLLM(history, userMessage) {
           top_p: 0.9,
           max_tokens: 4096
         }
-      })
+      }),
+      signal: controller.signal
     });
 
     if (!response.ok) {
@@ -399,14 +420,17 @@ export async function askLLM(history, userMessage) {
       throw new Error("Invalid response format from Ollama");
     }
 
+    // Clear current request on success
+    currentRequest = null;
     return data.message.content;
   } catch (error) {
     console.error("❌ Error calling Ollama:", error);
+    
+    // Clear current request on error
+    currentRequest = null;
+    
     if (error.name === 'AbortError') {
-      // No longer using timeout, so this block is effectively removed
-      // const timeoutMs = calculateTimeout(userMessage, history);
-      // const timeoutMinutes = Math.round(timeoutMs / 60000 * 10) / 10; // Round to 1 decimal place
-      // throw new Error(`Request to Ollama timed out after ${timeoutMinutes} minutes. This timeout was automatically adjusted based on your question type.`);
+      throw new Error('Request was cancelled');
     }
     throw new Error(`Failed to get response from Ollama: ${error.message}`);
   }

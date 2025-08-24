@@ -11,6 +11,13 @@ export async function sendMessage(message, sessionId = null) {
     });
     
     if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      
+      // Handle cancellation specifically
+      if (response.status === 499 || errorData.cancelled) {
+        throw new Error('Request was cancelled');
+      }
+      
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
@@ -22,6 +29,12 @@ export async function sendMessage(message, sessionId = null) {
     };
   } catch (error) {
     console.error('Error sending message:', error);
+    
+    // Re-throw cancellation errors as-is
+    if (error.message === 'Request was cancelled') {
+      throw error;
+    }
+    
     throw new Error('Failed to get response from AI assistant');
   }
 }

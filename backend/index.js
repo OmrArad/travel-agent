@@ -2,7 +2,7 @@ import "dotenv/config";
 import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
-import { askLLM } from "./services/llm.js";
+import { askLLM, cancelCurrentRequest } from "./services/llm.js";
 
 console.log("🔑 Ollama configuration:");
 console.log("  - Base URL:", process.env.OLLAMA_BASE_URL || "http://localhost:11434");
@@ -76,12 +76,21 @@ app.post("/chat", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Error in /chat route:", err);
-    res.status(500).json({ error: "Something went wrong", details: err.message });
+    
+    // Handle cancellation errors differently
+    if (err.message === 'Request was cancelled') {
+      res.status(499).json({ error: "Request was cancelled", cancelled: true });
+    } else {
+      res.status(500).json({ error: "Something went wrong", details: err.message });
+    }
   }
 });
 
 // Endpoint to start a new chat session
 app.post("/new-chat", (req, res) => {
+  // Cancel any ongoing request when starting a new chat
+  const wasCancelled = cancelCurrentRequest();
+  
   const sessionId = generateSessionId();
   sessions.set(sessionId, []);
   console.log("🆕 Created new chat session:", sessionId);
