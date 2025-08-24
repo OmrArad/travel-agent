@@ -15,13 +15,15 @@
 
 ## Response Structure
 - **Consistent formatting:** Markdown with emojis for readability
-- **Follow-up questions:** Always include 2-3 relevant next steps
+- **Follow-up questions:** Include 1-2 natural follow-ups when they add value
 - **Direct address:** Use "you" instead of "the user" for personal engagement
+- **Subtle integration:** Embed questions naturally rather than using forced "What's Next?" sections
 
 **Why these choices:** 
 - **Emojis and formatting:** Makes responses scannable and visually appealing, especially for mobile users
-- **Follow-up questions:** Reduces user cognitive load by suggesting natural conversation continuations
+- **Follow-up questions:** Provides helpful guidance without being repetitive or forced
 - **Direct address:** Creates more personal, conversational experience compared to formal third-person responses
+- **Natural flow:** Avoids repetitive "What's Next?" sections that can feel artificial
 
 ## Context Management
 - **History limit:** 8 messages with smart cleanup
