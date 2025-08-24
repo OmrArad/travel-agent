@@ -3,6 +3,31 @@ import { getWeather } from "./weather.js";
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
 
+// Track active requests for cancellation
+const activeRequests = new Map();
+
+// Function to generate a unique request ID
+function generateRequestId(sessionId) {
+  return `${sessionId}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+// Function to cancel active request for a session
+export function cancelActiveRequest(sessionId) {
+  const requestId = activeRequests.get(sessionId);
+  if (requestId && requestId.controller) {
+    console.log(`🛑 Cancelling active request for session: ${sessionId}`);
+    requestId.controller.abort();
+    activeRequests.delete(sessionId);
+    return true;
+  }
+  return false;
+}
+
+// Function to get active request info
+export function getActiveRequestInfo(sessionId) {
+  return activeRequests.get(sessionId);
+}
+
 // Function to detect if a message is asking about weather
 function isWeatherQuery(message) {
   const weatherKeywords = [
@@ -315,7 +340,7 @@ After providing your main response, include 1-2 natural follow-up questions or s
 `;
 }
 
-export async function askLLM(history, userMessage) {
+export async function askLLM(history, userMessage, sessionId = null) {
   // Check if the message is travel-related
   if (!isTravelQuery(userMessage)) {
     console.log("🚫 Non-travel query detected, redirecting to travel assistance");
@@ -367,9 +392,24 @@ export async function askLLM(history, userMessage) {
 
   console.log("🔵 Sending to Ollama:", JSON.stringify(messages, null, 2));
 
+  // Create AbortController for this request if sessionId is provided
+  let controller = null;
+  let requestId = null;
+  
+  if (sessionId) {
+    // Cancel any existing request for this session
+    cancelActiveRequest(sessionId);
+    
+    // Create new controller and track this request
+    controller = new AbortController();
+    requestId = generateRequestId(sessionId);
+    activeRequests.set(sessionId, { controller, requestId, startTime: Date.now() });
+    
+    console.log(`🔄 Starting new request for session: ${sessionId} (ID: ${requestId})`);
+  }
+
   try {
-    // Remove timeout and AbortController logic
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
+    const fetchOptions = {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -384,7 +424,14 @@ export async function askLLM(history, userMessage) {
           max_tokens: 4096
         }
       })
-    });
+    };
+
+    // Add signal if controller exists
+    if (controller) {
+      fetchOptions.signal = controller.signal;
+    }
+
+    const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, fetchOptions);
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -399,14 +446,24 @@ export async function askLLM(history, userMessage) {
       throw new Error("Invalid response format from Ollama");
     }
 
+    // Clean up request tracking on success
+    if (sessionId) {
+      activeRequests.delete(sessionId);
+      console.log(`✅ Request completed for session: ${sessionId} (ID: ${requestId})`);
+    }
+
     return data.message.content;
   } catch (error) {
     console.error("❌ Error calling Ollama:", error);
+    
+    // Clean up request tracking on error
+    if (sessionId) {
+      activeRequests.delete(sessionId);
+      console.log(`❌ Request failed for session: ${sessionId} (ID: ${requestId})`);
+    }
+    
     if (error.name === 'AbortError') {
-      // No longer using timeout, so this block is effectively removed
-      // const timeoutMs = calculateTimeout(userMessage, history);
-      // const timeoutMinutes = Math.round(timeoutMs / 60000 * 10) / 10; // Round to 1 decimal place
-      // throw new Error(`Request to Ollama timed out after ${timeoutMinutes} minutes. This timeout was automatically adjusted based on your question type.`);
+      throw new Error('Request was cancelled');
     }
     throw new Error(`Failed to get response from Ollama: ${error.message}`);
   }

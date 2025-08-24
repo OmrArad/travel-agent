@@ -2,7 +2,7 @@ import "dotenv/config";
 import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
-import { askLLM } from "./services/llm.js";
+import { askLLM, cancelActiveRequest, getActiveRequestInfo } from "./services/llm.js";
 
 console.log("🔑 Ollama configuration:");
 console.log("  - Base URL:", process.env.OLLAMA_BASE_URL || "http://localhost:11434");
@@ -55,8 +55,8 @@ app.post("/chat", async (req, res) => {
     // Get or create session history
     const conversationHistory = getSessionHistory(sessionId);
     
-    // Call LLM with function calling support
-    const response = await askLLM(conversationHistory, message);
+    // Call LLM with session tracking for cancellation support
+    const response = await askLLM(conversationHistory, message, sessionId);
     console.log("🟢 LLM response (to be sent):", response);
 
     // Add messages to session history
@@ -76,7 +76,13 @@ app.post("/chat", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Error in /chat route:", err);
-    res.status(500).json({ error: "Something went wrong", details: err.message });
+    
+    // Handle cancellation errors differently
+    if (err.message === 'Request was cancelled') {
+      res.status(499).json({ error: "Request was cancelled", cancelled: true });
+    } else {
+      res.status(500).json({ error: "Something went wrong", details: err.message });
+    }
   }
 });
 
@@ -107,13 +113,51 @@ app.get("/session/:sessionId", (req, res) => {
 // Endpoint to clear a session
 app.delete("/session/:sessionId", (req, res) => {
   const { sessionId } = req.params;
+  
+  // Cancel any active request for this session
+  const wasCancelled = cancelActiveRequest(sessionId);
+  
   const deleted = sessions.delete(sessionId);
   
   if (deleted) {
     console.log("🗑️ Deleted session:", sessionId);
-    res.json({ message: "Session cleared successfully" });
+    res.json({ 
+      message: "Session cleared successfully",
+      cancelled: wasCancelled
+    });
   } else {
     res.status(404).json({ error: "Session not found" });
+  }
+});
+
+// Endpoint to cancel active request for a session
+app.post("/cancel/:sessionId", (req, res) => {
+  const { sessionId } = req.params;
+  const wasCancelled = cancelActiveRequest(sessionId);
+  
+  if (wasCancelled) {
+    console.log("🛑 Cancelled request for session:", sessionId);
+    res.json({ message: "Request cancelled successfully", cancelled: true });
+  } else {
+    res.status(404).json({ error: "No active request found for this session" });
+  }
+});
+
+// Endpoint to get request status for a session
+app.get("/status/:sessionId", (req, res) => {
+  const { sessionId } = req.params;
+  const requestInfo = getActiveRequestInfo(sessionId);
+  
+  if (requestInfo) {
+    const duration = Date.now() - requestInfo.startTime;
+    res.json({ 
+      active: true, 
+      requestId: requestInfo.requestId,
+      duration: Math.round(duration / 1000), // Duration in seconds
+      startTime: requestInfo.startTime
+    });
+  } else {
+    res.json({ active: false });
   }
 });
 

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { sendMessage, createNewChat } from "./api";
+import { sendMessage, createNewChat, cancelRequest, getRequestStatus } from "./api";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -36,19 +36,35 @@ class ErrorBoundary extends React.Component {
 }
 
 export default function App() {
-  const [messages, setMessages] = useState([
-    {
-      role: "assistant",
-      content: "Hello! I'm your AI travel assistant. I can help you with:\n\n• Destination recommendations\n• Weather information for any city\n• Packing suggestions\n• Travel tips and advice\n\nWhat would you like to know about?",
-      timestamp: new Date()
+  // Chat management state
+  const [chats, setChats] = useState({
+    // Default chat
+    default: {
+      id: 'default',
+      title: 'New Chat',
+      messages: [
+        {
+          role: "assistant",
+          content: "Hello! I'm your AI travel assistant. I can help you with:\n\n• Destination recommendations\n• Weather information for any city\n• Packing suggestions\n• Travel tips and advice\n\nWhat would you like to know about?",
+          timestamp: new Date()
+        }
+      ],
+      sessionId: null,
+      isLoading: false
     }
-  ]);
+  });
+  
+  const [activeChatId, setActiveChatId] = useState('default');
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [sessionId, setSessionId] = useState(null);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
+  
+  // Get current chat data
+  const currentChat = chats[activeChatId];
+  const messages = currentChat?.messages || [];
+  const isLoading = currentChat?.isLoading || false;
+  const sessionId = currentChat?.sessionId || null;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -70,9 +86,22 @@ export default function App() {
     if (!input.trim()) return;
     
     const newMsg = { role: "user", content: input, timestamp: new Date() };
-    setMessages([...messages, newMsg]);
+    
+    // Update current chat with new message and loading state
+    setChats(prev => ({
+      ...prev,
+      [activeChatId]: {
+        ...prev[activeChatId],
+        messages: [...prev[activeChatId].messages, newMsg],
+        isLoading: true,
+        // Update title based on first user message
+        title: prev[activeChatId].messages.length === 1 ? 
+          input.length > 30 ? input.substring(0, 30) + '...' : input : 
+          prev[activeChatId].title
+      }
+    }));
+    
     setInput("");
-    setIsLoading(true);
 
     try {
       const response = await sendMessage(input, sessionId);
@@ -82,17 +111,42 @@ export default function App() {
       }
       
       const assistantMsg = { role: "assistant", content: response.reply, timestamp: new Date() };
-      setMessages((prev) => [...prev, assistantMsg]);
       
-      // Update session ID if this is a new session
-      if (response.sessionId && !sessionId) {
-        setSessionId(response.sessionId);
-      }
+      // Update chat with response and new session ID
+      setChats(prev => ({
+        ...prev,
+        [activeChatId]: {
+          ...prev[activeChatId],
+          messages: [...prev[activeChatId].messages, assistantMsg],
+          sessionId: response.sessionId || prev[activeChatId].sessionId,
+          isLoading: false
+        }
+      }));
     } catch (error) {
       console.error("Error sending message:", error);
-      setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again.", timestamp: new Date() }]);
-    } finally {
-      setIsLoading(false);
+      
+      // Handle cancellation differently
+      if (error.message.includes('cancelled') || error.message.includes('Request was cancelled')) {
+        const cancelledMsg = { role: "assistant", content: "Request was cancelled.", timestamp: new Date() };
+        setChats(prev => ({
+          ...prev,
+          [activeChatId]: {
+            ...prev[activeChatId],
+            messages: [...prev[activeChatId].messages, cancelledMsg],
+            isLoading: false
+          }
+        }));
+      } else {
+        const errorMsg = { role: "assistant", content: "Sorry, I encountered an error. Please try again.", timestamp: new Date() };
+        setChats(prev => ({
+          ...prev,
+          [activeChatId]: {
+            ...prev[activeChatId],
+            messages: [...prev[activeChatId].messages, errorMsg],
+            isLoading: false
+          }
+        }));
+      }
     }
   };
 
@@ -104,29 +158,47 @@ export default function App() {
   };
 
   const handleQuickAction = (action) => {
-    setInput(action);
-    // Auto-send the quick action
-    setTimeout(() => {
-      const newMsg = { role: "user", content: action, timestamp: new Date() };
-      setMessages([...messages, newMsg]);
-      setInput("");
-      setIsLoading(true);
+    const newMsg = { role: "user", content: action, timestamp: new Date() };
+    
+    // Update current chat with new message and loading state
+    setChats(prev => ({
+      ...prev,
+      [activeChatId]: {
+        ...prev[activeChatId],
+        messages: [...prev[activeChatId].messages, newMsg],
+        isLoading: true,
+        // Update title based on first user message
+        title: prev[activeChatId].messages.length === 1 ? 
+          action.length > 30 ? action.substring(0, 30) + '...' : action : 
+          prev[activeChatId].title
+      }
+    }));
 
-      sendMessage(action, sessionId)
-        .then(response => {
-          setMessages(prev => [...prev, { role: "assistant", content: response.reply, timestamp: new Date() }]);
-          if (response.sessionId && !sessionId) {
-            setSessionId(response.sessionId);
+    sendMessage(action, sessionId)
+      .then(response => {
+        const assistantMsg = { role: "assistant", content: response.reply, timestamp: new Date() };
+        setChats(prev => ({
+          ...prev,
+          [activeChatId]: {
+            ...prev[activeChatId],
+            messages: [...prev[activeChatId].messages, assistantMsg],
+            sessionId: response.sessionId || prev[activeChatId].sessionId,
+            isLoading: false
           }
-        })
-        .catch(error => {
-          console.error("Error sending message:", error);
-          setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again.", timestamp: new Date() }]);
-        })
-        .finally(() => {
-          setIsLoading(false);
-        });
-    }, 100);
+        }));
+      })
+      .catch(error => {
+        console.error("Error sending message:", error);
+        const errorMsg = { role: "assistant", content: "Sorry, I encountered an error. Please try again.", timestamp: new Date() };
+        setChats(prev => ({
+          ...prev,
+          [activeChatId]: {
+            ...prev[activeChatId],
+            messages: [...prev[activeChatId].messages, errorMsg],
+            isLoading: false
+          }
+        }));
+      });
   };
 
   const formatMessage = (content, role) => {
@@ -184,33 +256,95 @@ export default function App() {
     return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const clearChat = async () => {
+  const createNewChatHandler = async () => {
     try {
-      // Create a new chat session
       const newSessionId = await createNewChat();
-      setSessionId(newSessionId);
+      const chatId = `chat-${Date.now()}`;
+      const newChat = {
+        id: chatId,
+        title: 'New Chat',
+        messages: [
+          {
+            role: "assistant",
+            content: "Hello! I'm your AI travel assistant. I can help you with:\n\n• Destination recommendations\n• Weather information for any city\n• Packing suggestions\n• Travel tips and advice\n\nWhat would you like to know about?",
+            timestamp: new Date()
+          }
+        ],
+        sessionId: newSessionId,
+        isLoading: false
+      };
       
-      // Reset messages to initial state
-      setMessages([
-        {
-          role: "assistant",
-          content: "Hello! I'm your AI travel assistant. I can help you with:\n\n• Destination recommendations\n• Weather information for any city\n• Packing suggestions\n• Travel tips and advice\n\nWhat would you like to know about?",
-          timestamp: new Date()
-        }
-      ]);
+      setChats(prev => ({
+        ...prev,
+        [chatId]: newChat
+      }));
       
-      console.log("🆕 Started new chat session");
+      setActiveChatId(chatId);
+      console.log("🆕 Created new chat:", chatId);
     } catch (error) {
       console.error("Error creating new chat:", error);
-      // Fallback: just reset messages locally
-      setMessages([
-        {
-          role: "assistant",
-          content: "Hello! I'm your AI travel assistant. I can help you with:\n\n• Destination recommendations\n• Weather information for any city\n• Packing suggestions\n• Travel tips and advice\n\nWhat would you like to know about?",
-          timestamp: new Date()
-        }
-      ]);
-      setSessionId(null);
+      // Fallback: create chat without backend session
+      const chatId = `chat-${Date.now()}`;
+      const newChat = {
+        id: chatId,
+        title: 'New Chat',
+        messages: [
+          {
+            role: "assistant",
+            content: "Hello! I'm your AI travel assistant. I can help you with:\n\n• Destination recommendations\n• Weather information for any city\n• Packing suggestions\n• Travel tips and advice\n\nWhat would you like to know about?",
+            timestamp: new Date()
+          }
+        ],
+        sessionId: null,
+        isLoading: false
+      };
+      
+      setChats(prev => ({
+        ...prev,
+        [chatId]: newChat
+      }));
+      
+      setActiveChatId(chatId);
+    }
+  };
+
+  const cancelCurrentRequest = async () => {
+    if (!sessionId || !isLoading) return;
+    
+    try {
+      await cancelRequest(sessionId);
+      console.log("🛑 Cancelled request for session:", sessionId);
+    } catch (error) {
+      console.error("Error cancelling request:", error);
+    }
+  };
+
+  const switchChat = (chatId) => {
+    // Cancel any active request in current chat before switching
+    if (isLoading && sessionId) {
+      cancelCurrentRequest();
+    }
+    
+    setActiveChatId(chatId);
+    setInput("");
+  };
+
+  const deleteChat = (chatId) => {
+    // Cancel any active request before deleting
+    const chat = chats[chatId];
+    if (chat?.isLoading && chat?.sessionId) {
+      cancelRequest(chat.sessionId).catch(console.error);
+    }
+    
+    setChats(prev => {
+      const newChats = { ...prev };
+      delete newChats[chatId];
+      return newChats;
+    });
+    
+    // If we're deleting the active chat, switch to default
+    if (chatId === activeChatId) {
+      setActiveChatId('default');
     }
   };
 
@@ -224,7 +358,7 @@ export default function App() {
           {/* Sidebar Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-700">
             <button
-              onClick={clearChat}
+              onClick={createNewChatHandler}
               className="flex items-center space-x-3 text-white hover:bg-gray-800 rounded-lg px-3 py-2 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -240,6 +374,59 @@ export default function App() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+          </div>
+
+          {/* Chat List */}
+          <div className="flex-1 p-4 space-y-2 overflow-y-auto">
+            <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">Chats</h3>
+            
+            {Object.values(chats).map((chat) => (
+              <div
+                key={chat.id}
+                className={`group relative flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
+                  activeChatId === chat.id
+                    ? 'bg-gray-800 text-white'
+                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                }`}
+                onClick={() => switchChat(chat.id)}
+              >
+                <div className="flex items-center space-x-3 min-w-0 flex-1">
+                  <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-sm">💬</span>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium truncate">{chat.title}</div>
+                    <div className="text-xs text-gray-400 truncate">
+                      {chat.messages.length > 1 ? `${chat.messages.length - 1} messages` : 'New chat'}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Loading indicator */}
+                {chat.isLoading && (
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  </div>
+                )}
+                
+                {/* Delete button */}
+                {Object.keys(chats).length > 1 && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteChat(chat.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-400 transition-opacity"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
 
           {/* Quick Actions */}
@@ -439,6 +626,21 @@ export default function App() {
                   style={{ minHeight: '48px', maxHeight: '120px' }}
                 />
               </div>
+              
+              {/* Cancel button when loading */}
+              {isLoading && (
+                <button
+                  className="p-3 rounded-xl font-medium transition-all duration-200 bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl"
+                  onClick={cancelCurrentRequest}
+                  title="Cancel request"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+              
+              {/* Send button */}
               <button
                 className={`p-3 rounded-xl font-medium transition-all duration-200 ${
                   isLoading || !input.trim()
