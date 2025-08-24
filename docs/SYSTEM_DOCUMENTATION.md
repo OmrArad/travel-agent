@@ -200,3 +200,126 @@ Based on your March travel plans and the weather conditions, here are some excel
 • Would you like recommendations for vegetarian or dietary restriction-friendly options?
 ```
 
+## Hallucination Detection Examples
+
+### Example 1: Specific Claims Detection
+
+**User:** "What's the exact price for a hotel in Tokyo?"
+
+**Assistant:**
+```
+🏨 **Hotel Pricing in Tokyo**
+
+Tokyo offers a wide range of accommodation options:
+
+**Budget Hotels:** $50-100 per night
+**Mid-range Hotels:** $100-200 per night  
+**Luxury Hotels:** $300-800+ per night
+
+**Factors affecting price:**
+• Location (central areas cost more)
+• Season (peak cherry blossom season is more expensive)
+• Hotel category and amenities
+• Booking timing (last-minute vs advance booking)
+
+**Tips for finding good deals:**
+• Book 3-6 months in advance for best rates
+• Consider business hotels for better value
+• Look for packages that include breakfast
+• Check multiple booking platforms
+
+💡 **Note:** I provided some specific details. Please verify these independently as they may not be current.
+```
+
+### Example 2: Contradiction Detection
+
+**User:** "Tell me about the weather in Tokyo"
+
+**Assistant:**
+```
+🌤️ **Tokyo Weather Overview**
+
+Tokyo experiences four distinct seasons:
+
+**Spring (March-May):**
+• Mild temperatures, cherry blossom season
+• Generally pleasant weather for sightseeing
+• Occasional rain showers
+
+**Summer (June-August):**
+• Hot and humid with frequent rain
+• Typhoon season (August-September)
+• High temperatures often exceed 30°C (86°F)
+
+**Autumn (September-November):**
+• Comfortable temperatures, beautiful fall colors
+• Generally dry weather
+• Ideal for outdoor activities
+
+**Winter (December-February):**
+• Cold but rarely snowy
+• Temperatures typically 5-10°C (41-50°F)
+• Clear skies and good visibility
+
+💡 **Note:** I notice some potentially conflicting information in my response. Please verify the details.
+```
+
+### Example 3: Missing Weather Data Detection
+
+**User:** "What's the weather like in Tokyo right now?"
+
+**Assistant:**
+```
+🌤️ **Tokyo Weather Information**
+
+I don't have access to real-time weather data for Tokyo at the moment. However, I can provide general information about Tokyo's typical weather patterns:
+
+**Current Season Weather Patterns:**
+• Spring: Mild temperatures, cherry blossoms
+• Summer: Hot and humid with rain
+• Autumn: Comfortable temperatures, clear skies
+• Winter: Cold but generally clear
+
+**For accurate current weather:**
+• Check weather apps or websites
+• Visit Japan Meteorological Agency website
+• Use hotel concierge services
+• Check local weather forecasts
+
+💡 **Note:** I was asked about weather but couldn't provide current weather data. Please check a weather service for real-time information.
+```
+
+### Example 4: Off-Topic Detection
+
+**User:** "What's the capital of France and how do I get there from Tokyo?"
+
+**Assistant:**
+```
+🇫🇷 **Paris Travel from Tokyo**
+
+**Getting to Paris from Tokyo:**
+
+**Flight Options:**
+• Direct flights: ~12-13 hours
+• Connecting flights: 15-20+ hours
+• Major airlines: JAL, ANA, Air France, Lufthansa
+
+**Typical Flight Costs:**
+• Economy: $800-1500 round trip
+• Business: $3000-6000 round trip
+• Prices vary by season and booking time
+
+**Travel Tips:**
+• Book 3-6 months in advance for best prices
+• Consider flying into CDG (Charles de Gaulle) or ORY (Orly)
+• Check visa requirements for your nationality
+• Plan for jet lag (7-hour time difference)
+
+**Alternative Routes:**
+• Via Middle East (Emirates, Qatar Airways)
+• Via Europe (Lufthansa, KLM)
+• Via North America (United, American)
+
+💡 **Note:** I provided some factual information that may change over time. Please verify current conditions.
+```
+

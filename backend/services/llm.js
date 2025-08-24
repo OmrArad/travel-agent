@@ -84,8 +84,281 @@ function hasRecentComplexConversation(history) {
   );
 }
 
-// Timeout constraints removed for home assignment
-// Allow LLM to take as much time as needed for complete responses
+// HALLUCINATION DETECTION FUNCTIONS
+
+// Function to detect overly specific claims that might be hallucinations
+function detectSpecificClaims(response) {
+  const specificClaimPatterns = [
+    // Specific prices without context
+    /\$\d+(?:\.\d{2})?\s+(?:per\s+)?(?:night|day|person|ticket)/gi,
+    // Specific dates without context
+    /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?\s+\d{4}\b/gi,
+    // Specific times without context
+    /\b\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)\b/gi,
+    // Specific phone numbers
+    /\b\+\d{1,3}\s*\d{3}\s*\d{3}\s*\d{4}\b/gi,
+    // Specific addresses
+    /\b\d+\s+[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr)\b/gi,
+    // Specific flight numbers
+    /\b[A-Z]{2,3}\d{3,4}\b/gi,
+    // Specific hotel names with exact details
+    /\b(?:Hotel|Resort|Inn|Lodge)\s+[A-Za-z\s]+(?:is\s+located\s+at|\s+at\s+address|\s+phone\s+number)\b/gi
+  ];
+  
+  const detectedClaims = [];
+  for (const pattern of specificClaimPatterns) {
+    const matches = response.match(pattern);
+    if (matches) {
+      detectedClaims.push(...matches);
+    }
+  }
+  
+  return detectedClaims;
+}
+
+// Function to detect confidence indicators that might signal uncertainty
+function detectConfidenceIndicators(response) {
+  const lowConfidencePatterns = [
+    /\b(?:I think|I believe|probably|maybe|perhaps|possibly|might be|could be|seems like|appears to be)\b/gi,
+    /\b(?:as far as I know|to the best of my knowledge|if I remember correctly|I'm not entirely sure)\b/gi,
+    /\b(?:this might|this could|this may|this seems|this appears)\b/gi
+  ];
+  
+  const highConfidencePatterns = [
+    /\b(?:definitely|certainly|absolutely|without a doubt|guaranteed|100% sure)\b/gi,
+    /\b(?:I know for sure|I can confirm|this is definitely|this is certainly)\b/gi
+  ];
+  
+  const lowConfidenceMatches = [];
+  const highConfidenceMatches = [];
+  
+  for (const pattern of lowConfidencePatterns) {
+    const matches = response.match(pattern);
+    if (matches) {
+      lowConfidenceMatches.push(...matches);
+    }
+  }
+  
+  for (const pattern of highConfidencePatterns) {
+    const matches = response.match(pattern);
+    if (matches) {
+      highConfidenceMatches.push(...matches);
+    }
+  }
+  
+  return {
+    lowConfidence: lowConfidenceMatches,
+    highConfidence: highConfidenceMatches
+  };
+}
+
+// Function to detect factual claims that need verification
+function detectFactualClaims(response) {
+  const factualClaimPatterns = [
+    // Currency exchange rates
+    /\b(?:exchange rate|conversion rate)\s+(?:is|of)\s+\d+(?:\.\d+)?\s+(?:to|per)\s+\d+(?:\.\d+)?/gi,
+    // Visa requirements
+    /\b(?:visa|visa-free|visa on arrival)\s+(?:is|are)\s+(?:required|not required|available)\s+(?:for|to)\s+[A-Za-z\s]+/gi,
+    // COVID restrictions
+    /\b(?:COVID|coronavirus|pandemic)\s+(?:restrictions|requirements|policies)\s+(?:are|is)\s+[A-Za-z\s]+/gi,
+    // Political situations
+    /\b(?:political|government|regime|administration)\s+(?:situation|status|condition)\s+(?:is|are)\s+[A-Za-z\s]+/gi,
+    // Safety claims
+    /\b(?:crime rate|safety level|security)\s+(?:is|are)\s+(?:high|low|moderate|excellent|poor)/gi,
+    // Weather patterns
+    /\b(?:average temperature|rainfall|humidity)\s+(?:is|are)\s+\d+(?:°C|°F|%|mm|inches)/gi,
+    // Flight information
+    /\b(?:flight|airline)\s+(?:number|route)\s+[A-Z]{2,3}\d{3,4}\s+(?:departs|arrives|leaves)\s+at\s+\d{1,2}:\d{2}/gi,
+    // Hotel ratings and reviews
+    /\b(?:hotel|resort)\s+[A-Za-z\s]+\s+(?:has|received|got)\s+\d+(?:\.\d+)?\s+(?:stars|star rating|out of 5)/gi,
+    // Restaurant recommendations with specific details
+    /\b(?:restaurant|dining)\s+[A-Za-z\s]+\s+(?:is|are)\s+(?:located|situated)\s+at\s+\d+/gi,
+    // Transportation schedules
+    /\b(?:train|bus|metro)\s+(?:departs|leaves|arrives)\s+(?:every|at)\s+\d+\s+(?:minutes|hours)/gi,
+    // Tourist attraction details
+    /\b(?:museum|attraction|landmark)\s+[A-Za-z\s]+\s+(?:is|are)\s+open\s+(?:from|between)\s+\d{1,2}:\d{2}\s+to\s+\d{1,2}:\d{2}/gi
+  ];
+  
+  const detectedClaims = [];
+  for (const pattern of factualClaimPatterns) {
+    const matches = response.match(pattern);
+    if (matches) {
+      detectedClaims.push(...matches);
+    }
+  }
+  
+  return detectedClaims;
+}
+
+// Function to detect contradictory information
+function detectContradictions(response) {
+  const contradictions = [];
+  
+  // Check for conflicting weather information
+  const weatherPatterns = [
+    /\b(?:hot|warm|sunny)\b/gi,
+    /\b(?:cold|chilly|snowy)\b/gi,
+    /\b(?:rainy|wet|stormy)\b/gi
+  ];
+  
+  const weatherMatches = weatherPatterns.map(pattern => response.match(pattern) || []);
+  if (weatherMatches[0].length > 0 && weatherMatches[1].length > 0) {
+    contradictions.push('Conflicting weather descriptions (hot/cold)');
+  }
+  if (weatherMatches[0].length > 0 && weatherMatches[2].length > 0) {
+    contradictions.push('Conflicting weather descriptions (sunny/rainy)');
+  }
+  
+  // Check for conflicting price information
+  const pricePatterns = [
+    /\b(?:expensive|high cost|luxury)\b/gi,
+    /\b(?:cheap|budget|affordable)\b/gi
+  ];
+  
+  const priceMatches = pricePatterns.map(pattern => response.match(pattern) || []);
+  if (priceMatches[0].length > 0 && priceMatches[1].length > 0) {
+    contradictions.push('Conflicting price descriptions (expensive/cheap)');
+  }
+  
+  // Check for conflicting time information
+  const timePatterns = [
+    /\b(?:peak season|busy|crowded)\b/gi,
+    /\b(?:off season|quiet|empty)\b/gi
+  ];
+  
+  const timeMatches = timePatterns.map(pattern => response.match(pattern) || []);
+  if (timeMatches[0].length > 0 && timeMatches[1].length > 0) {
+    contradictions.push('Conflicting season descriptions (peak/off-season)');
+  }
+  
+  return contradictions;
+}
+
+// Function to detect potential hallucinations and add warnings
+function detectHallucinations(response, userMessage) {
+  const warnings = [];
+  const confidence = { score: 0.5, indicators: [] }; // Start with neutral confidence
+  
+  // Check for specific claims
+  const specificClaims = detectSpecificClaims(response);
+  if (specificClaims.length > 0) {
+    warnings.push({
+      type: 'specific_claims',
+      message: 'I notice I provided some specific details. Please verify these independently as they may not be current.',
+      claims: specificClaims.slice(0, 3) // Limit to first 3 claims
+    });
+    confidence.score -= 0.2;
+  }
+  
+  // Check confidence indicators
+  const confidenceIndicators = detectConfidenceIndicators(response);
+  if (confidenceIndicators.lowConfidence.length > 0) {
+    confidence.indicators.push('uncertain');
+    confidence.score -= 0.1;
+  }
+  if (confidenceIndicators.highConfidence.length > 0) {
+    confidence.indicators.push('overconfident');
+    confidence.score -= 0.15;
+  }
+  
+  // Check factual claims
+  const factualClaims = detectFactualClaims(response);
+  if (factualClaims.length > 0) {
+    warnings.push({
+      type: 'factual_claims',
+      message: 'I provided some factual information that may change over time. Please verify current conditions.',
+      claims: factualClaims.slice(0, 2) // Limit to first 2 claims
+    });
+    confidence.score -= 0.25;
+  }
+  
+  // Check for contradictions
+  const contradictions = detectContradictions(response);
+  if (contradictions.length > 0) {
+    warnings.push({
+      type: 'contradictions',
+      message: 'I notice some potentially conflicting information in my response. Please verify the details.',
+      contradictions: contradictions
+    });
+    confidence.score -= 0.3;
+  }
+  
+  // Check for weather queries without weather data
+  if (isWeatherQuery(userMessage) && !response.includes('weather') && !response.includes('temperature')) {
+    warnings.push({
+      type: 'missing_weather_data',
+      message: 'I was asked about weather but couldn\'t provide current weather data. Please check a weather service for real-time information.'
+    });
+    confidence.score -= 0.3;
+  }
+  
+  // Check for overly generic responses to specific questions
+  if (userMessage.length > 50 && response.length < 100) {
+    warnings.push({
+      type: 'generic_response',
+      message: 'My response seems quite brief for your detailed question. You may want to ask for more specific information.'
+    });
+    confidence.score -= 0.1;
+  }
+  
+  // Check for responses that don't address the question
+  const questionWords = userMessage.toLowerCase().split(/\s+/).filter(word => word.length > 3);
+  const responseWords = response.toLowerCase().split(/\s+/).filter(word => word.length > 3);
+  const commonWords = questionWords.filter(word => responseWords.includes(word));
+  
+  if (questionWords.length > 3 && commonWords.length < questionWords.length * 0.3) {
+    warnings.push({
+      type: 'off_topic',
+      message: 'My response may not fully address your question. Please let me know if you need more specific information.'
+    });
+    confidence.score -= 0.2;
+  }
+  
+  return {
+    hasWarnings: warnings.length > 0,
+    warnings: warnings,
+    confidence: {
+      score: Math.max(0, Math.min(1, confidence.score)), // Normalize to 0-1
+      indicators: confidence.indicators
+    }
+  };
+}
+
+// Function to add hallucination warnings to response
+function addHallucinationWarnings(response, hallucinationData) {
+  if (!hallucinationData.hasWarnings) {
+    return response;
+  }
+  
+  let enhancedResponse = response;
+  
+  // Determine the most appropriate warning based on the issues detected
+  const warningTypes = hallucinationData.warnings.map(w => w.type);
+  const confidenceScore = hallucinationData.confidence.score;
+  
+  // If confidence is very low (< 0.4), use a general confidence warning
+  if (confidenceScore < 0.4) {
+    enhancedResponse += '\n\n⚠️ **Confidence Note:** Some information provided may need verification. Please check current conditions and details independently.';
+  }
+  // If we have specific warnings and confidence is moderate (0.4-0.6), use the most relevant specific warning
+  else if (warningTypes.length > 0 && confidenceScore < 0.6) {
+    // Prioritize warnings by importance
+    const priorityOrder = ['missing_weather_data', 'contradictions', 'factual_claims', 'specific_claims', 'off_topic', 'generic_response'];
+    const priorityWarning = hallucinationData.warnings.find(w => 
+      priorityOrder.includes(w.type)
+    );
+    
+    if (priorityWarning) {
+      enhancedResponse += `\n\n💡 **Note:** ${priorityWarning.message}`;
+    }
+  }
+  // If confidence is low but we have multiple warnings, use a general note
+  else if (confidenceScore < 0.6) {
+    enhancedResponse += '\n\n💡 **Note:** Please verify important details independently as some information may need updating.';
+  }
+  
+  return enhancedResponse;
+}
 
 // Function to detect duplicate or very similar messages
 function isDuplicateMessage(message, history, threshold = 0.8) {
@@ -227,6 +500,14 @@ You are a specialized Travel Assistant. You ONLY answer travel-related questions
 - For non-travel questions (math, general knowledge, etc.), respond with: "I'm a travel assistant and can only help with travel-related questions. How can I assist you with your travel plans today?"
 - Focus exclusively on travel topics: destinations, hotels, flights, activities, weather for travel, travel tips, itineraries, etc.
 
+## HALLUCINATION PREVENTION GUIDELINES:
+- **Avoid specific details** you're not confident about (exact prices, phone numbers, addresses)
+- **Use general ranges** instead of specific numbers when possible (e.g., "$100-200 per night" vs "$147.50")
+- **Qualify uncertain information** with phrases like "typically," "usually," or "generally"
+- **Acknowledge limitations** when you don't have current information
+- **Focus on general advice** rather than specific recommendations you can't verify
+- **Use weather data** when provided, but don't make up weather information
+
 For complex travel questions, use this structured approach:
 
 **🤔 Understanding:** Break down the travel request
@@ -269,6 +550,14 @@ You are a specialized Travel Assistant with access to weather information. You O
 - If a question is NOT related to travel, tourism, destinations, accommodations, transportation, activities, or travel planning, politely decline to answer
 - For non-travel questions (math, general knowledge, etc.), respond with: "I'm a travel assistant and can only help with travel-related questions. How can I assist you with your travel plans today?"
 - Focus exclusively on travel topics: destinations, hotels, flights, activities, weather for travel, travel tips, itineraries, etc.
+
+## HALLUCINATION PREVENTION GUIDELINES:
+- **Avoid specific details** you're not confident about (exact prices, phone numbers, addresses)
+- **Use general ranges** instead of specific numbers when possible (e.g., "$100-200 per night" vs "$147.50")
+- **Qualify uncertain information** with phrases like "typically," "usually," or "generally"
+- **Acknowledge limitations** when you don't have current information
+- **Focus on general advice** rather than specific recommendations you can't verify
+- **Use weather data** when provided, but don't make up weather information
 
 ## Response Guidelines:
 - Answer concisely and clearly using markdown formatting
@@ -399,7 +688,11 @@ export async function askLLM(history, userMessage) {
       throw new Error("Invalid response format from Ollama");
     }
 
-    return data.message.content;
+    const rawResponse = data.message.content;
+    const hallucinationData = detectHallucinations(rawResponse, userMessage);
+    const finalResponse = addHallucinationWarnings(rawResponse, hallucinationData);
+
+    return finalResponse;
   } catch (error) {
     console.error("❌ Error calling Ollama:", error);
     if (error.name === 'AbortError') {

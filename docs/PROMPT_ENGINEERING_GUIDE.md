@@ -37,6 +37,35 @@
 - **Weather consolidation:** Reduces API calls and improves performance for repeated weather queries
 - **Travel filtering:** Ensures the assistant stays focused on travel topics and provides clear user guidance
 
+## Hallucination Detection and Prevention
+
+### Multi-Layer Detection System
+- **Specific claims detection:** Identifies overly specific details (prices, phone numbers, addresses)
+- **Confidence indicators:** Monitors uncertainty and overconfidence language patterns
+- **Factual claims verification:** Flags information that may change over time
+- **Contradiction detection:** Identifies conflicting information within responses
+- **Off-topic detection:** Ensures responses address the user's question
+
+### Prevention Strategies
+- **System prompt guidelines:** Explicit instructions to avoid specific details when uncertain
+- **General ranges:** Use "$100-200 per night" instead of "$147.50"
+- **Qualifying language:** Use "typically," "usually," or "generally" for uncertain information
+- **Limitation acknowledgment:** Explicitly state when current information is unavailable
+- **Weather data integration:** Use real weather data when available, don't make up information
+
+### Warning System
+- **Confidence scoring:** 0-1 scale based on detected issues
+- **Intelligent warning selection:** Shows only the most relevant warning based on confidence level and issue type
+- **Priority-based warnings:** Missing weather data and contradictions get priority over generic warnings
+- **User guidance:** Clear instructions on what to verify independently
+- **Graceful degradation:** System continues to function even when confidence is low
+
+**Why this approach:**
+- **Builds trust:** Users know when information may need verification
+- **Reduces errors:** Prevents the system from making up specific details
+- **Maintains usefulness:** Still provides helpful general advice even when specific details are uncertain
+- **Educational:** Teaches users to verify important travel information independently
+
 ## Model Settings Explained
 
 ### Temperature: 0.7

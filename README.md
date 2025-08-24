@@ -14,6 +14,7 @@ A simple conversational travel assistant built with React + Node + Ollama.
 - Maintains conversation context
 - Uses enhanced prompt engineering (chain-of-thought, system instructions)
 - Function calling support with weather tool
+- **Advanced hallucination detection** with confidence scoring and warnings
 - Simple error handling
 - Runs locally with Ollama for privacy and cost savings
 
@@ -43,6 +44,15 @@ The assistant intelligently manages conversation context to improve performance:
 - **Weather query consolidation**: Combines multiple weather queries for the same city into one
 - **Context optimization**: Maintains only the most relevant recent messages (default: 8 messages)
 - **Smart cleanup**: Removes redundant information while preserving conversation flow
+
+### Hallucination Detection System
+The assistant includes comprehensive hallucination detection to ensure reliable information:
+- **Specific claims detection**: Identifies overly specific details that may need verification
+- **Confidence indicators**: Monitors uncertainty and overconfidence language patterns
+- **Contradiction detection**: Flags conflicting information within responses
+- **Factual claims verification**: Identifies information that may change over time
+- **Off-topic detection**: Ensures responses address the user's question
+- **Warning system**: Provides contextual warnings when confidence is low
 
 ### How to Run
 1. Clone repo
