@@ -2,7 +2,7 @@ import "dotenv/config";
 import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
-import { askLLM } from "./services/llm.js";
+import { askLLM, cancelActiveRequest, getActiveRequestInfo } from "./services/llm.js";
 
 console.log("🔑 Ollama configuration:");
 console.log("  - Base URL:", process.env.OLLAMA_BASE_URL || "http://localhost:11434");
@@ -55,7 +55,7 @@ app.post("/chat", async (req, res) => {
     // Get or create session history
     const conversationHistory = getSessionHistory(sessionId);
     
-    // Call LLM with function calling support
+    // Call LLM with cancellation support
     const response = await askLLM(conversationHistory, message);
     console.log("🟢 LLM response (to be sent):", response);
 
@@ -76,7 +76,13 @@ app.post("/chat", async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Error in /chat route:", err);
-    res.status(500).json({ error: "Something went wrong", details: err.message });
+    
+    // Handle cancellation errors differently
+    if (err.message === 'Request was cancelled') {
+      res.status(499).json({ error: "Request was cancelled", cancelled: true });
+    } else {
+      res.status(500).json({ error: "Something went wrong", details: err.message });
+    }
   }
 });
 
@@ -107,13 +113,48 @@ app.get("/session/:sessionId", (req, res) => {
 // Endpoint to clear a session
 app.delete("/session/:sessionId", (req, res) => {
   const { sessionId } = req.params;
+  
+  // Cancel any active request
+  const wasCancelled = cancelActiveRequest();
+  
   const deleted = sessions.delete(sessionId);
   
   if (deleted) {
     console.log("🗑️ Deleted session:", sessionId);
-    res.json({ message: "Session cleared successfully" });
+    res.json({ 
+      message: "Session cleared successfully",
+      cancelled: wasCancelled
+    });
   } else {
     res.status(404).json({ error: "Session not found" });
+  }
+});
+
+// Endpoint to cancel active request
+app.post("/cancel", (req, res) => {
+  const wasCancelled = cancelActiveRequest();
+  
+  if (wasCancelled) {
+    console.log("🛑 Cancelled active request");
+    res.json({ message: "Request cancelled successfully", cancelled: true });
+  } else {
+    res.status(404).json({ error: "No active request found" });
+  }
+});
+
+// Endpoint to get request status
+app.get("/status", (req, res) => {
+  const requestInfo = getActiveRequestInfo();
+  
+  if (requestInfo) {
+    const duration = Date.now() - requestInfo.startTime;
+    res.json({ 
+      active: true, 
+      duration: Math.round(duration / 1000), // Duration in seconds
+      startTime: requestInfo.startTime
+    });
+  } else {
+    res.json({ active: false });
   }
 });
 
