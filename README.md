@@ -2,6 +2,10 @@
 
 A simple conversational travel assistant built with React + Node + Ollama.
 
+## 📚 Documentation
+- **[Sample Conversations](docs/SYSTEM_DOCUMENTATION.md)** - Example conversation transcripts showing the system in action
+- **[Prompt Engineering](docs/PROMPT_ENGINEERING_GUIDE.md)** - Brief notes on key prompt engineering decisions
+
 ### Features
 - Handles 3 types of queries:
   1. Destination recommendations

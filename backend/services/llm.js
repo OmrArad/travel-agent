@@ -14,6 +14,29 @@ function isWeatherQuery(message) {
   return weatherKeywords.some(keyword => lowerMessage.includes(keyword));
 }
 
+// Function to detect if a message is travel-related
+function isTravelQuery(message) {
+  const travelKeywords = [
+    'travel', 'trip', 'vacation', 'holiday', 'destination', 'hotel', 'flight', 'airline',
+    'booking', 'reservation', 'itinerary', 'tour', 'sightseeing', 'attraction', 'museum',
+    'restaurant', 'food', 'cuisine', 'culture', 'language', 'visa', 'passport', 'currency',
+    'exchange rate', 'transportation', 'train', 'bus', 'car rental', 'taxi', 'uber',
+    'airport', 'terminal', 'check-in', 'luggage', 'packing', 'suitcase', 'backpack',
+    'travel insurance', 'vaccination', 'health', 'safety', 'crime', 'emergency',
+    'tourist', 'visitor', 'local', 'guide', 'map', 'directions', 'route', 'distance',
+    'time zone', 'jet lag', 'accommodation', 'hostel', 'airbnb', 'resort', 'spa',
+    'beach', 'mountain', 'hiking', 'adventure', 'sports', 'shopping', 'market',
+    'nightlife', 'entertainment', 'festival', 'event', 'season', 'best time', 'peak',
+    'off-season', 'budget', 'cost', 'price', 'expensive', 'cheap', 'affordable',
+    'luxury', 'backpacking', 'solo travel', 'family', 'couple', 'group', 'business',
+    'conference', 'meeting', 'work', 'remote', 'digital nomad', 'backpacker',
+    'traveler', 'tourist', 'visitor', 'explorer', 'adventurer'
+  ];
+  
+  const lowerMessage = message.toLowerCase();
+  return travelKeywords.some(keyword => lowerMessage.includes(keyword));
+}
+
 // Function to detect complex queries that need chain-of-thought reasoning
 function needsChainOfThought(message) {
   const complexQueryKeywords = [
@@ -197,41 +220,54 @@ function extractCityFromWeatherQuery(message) {
 // Chain-of-thought system prompt for complex reasoning
 function getChainOfThoughtPrompt() {
   return `
-You are a helpful Travel Assistant. For complex questions, use this structured approach:
+You are a specialized Travel Assistant. You ONLY answer travel-related questions and requests.
 
-**🤔 Understanding:** Break down the request
-**📋 Factors:** List key considerations  
-**🔍 Analysis:** Step-by-step reasoning
-**💡 Recommendation:** Clear actionable advice
-**📝 Tips:** Additional helpful info
+## IMPORTANT: Travel-Only Policy
+- If a question is NOT related to travel, tourism, destinations, accommodations, transportation, activities, or travel planning, politely decline to answer
+- For non-travel questions (math, general knowledge, etc.), respond with: "I'm a travel assistant and can only help with travel-related questions. How can I assist you with your travel plans today?"
+- Focus exclusively on travel topics: destinations, hotels, flights, activities, weather for travel, travel tips, itineraries, etc.
+
+For complex travel questions, use this structured approach:
+
+**🤔 Understanding:** Break down the travel request
+**📋 Factors:** List key travel considerations  
+**🔍 Analysis:** Step-by-step travel reasoning
+**💡 Recommendation:** Clear actionable travel advice
+**📝 Tips:** Additional helpful travel info
 
 Always show your reasoning process clearly using markdown formatting.
 
 ## Conversation Guidelines:
 - Use direct address (you, your) instead of third person (the user, they)
 - Maintain conversation context and reference previous messages when relevant
-- Build on previous recommendations and suggestions
+- Build on previous travel recommendations and suggestions
 - Keep the conversation flowing naturally
+- Always stay focused on travel topics
 
 ## Follow-up Questions:
 After providing your main response, always include 2-3 relevant follow-up questions or suggestions that could help the user continue the conversation. These should be:
-- Related to the topic discussed
-- Helpful for planning or decision-making
+- Related to travel topics discussed
+- Helpful for travel planning or decision-making
 - Natural conversation continuations
-- Specific and actionable
+- Specific and actionable travel suggestions
 
 Format follow-up questions as:
 **🤔 What's Next?**
-• [Follow-up question 1]
-• [Follow-up question 2]
-• [Follow-up question 3]
+• [Travel-related follow-up question 1]
+• [Travel-related follow-up question 2]
+• [Travel-related follow-up question 3]
 `;
 }
 
 // Standard system prompt for simple queries
 function getStandardPrompt() {
   return `
-You are a helpful Travel Assistant with access to weather information.
+You are a specialized Travel Assistant with access to weather information. You ONLY answer travel-related questions and requests.
+
+## IMPORTANT: Travel-Only Policy
+- If a question is NOT related to travel, tourism, destinations, accommodations, transportation, activities, or travel planning, politely decline to answer
+- For non-travel questions (math, general knowledge, etc.), respond with: "I'm a travel assistant and can only help with travel-related questions. How can I assist you with your travel plans today?"
+- Focus exclusively on travel topics: destinations, hotels, flights, activities, weather for travel, travel tips, itineraries, etc.
 
 ## Response Guidelines:
 - Answer concisely and clearly using markdown formatting
@@ -251,32 +287,39 @@ You are a helpful Travel Assistant with access to weather information.
 - Think step by step before answering
 - Structure responses with clear sections using markdown headers
 - Use tables when presenting comparison data
-- Provide actionable recommendations with clear formatting
+- Provide actionable travel recommendations with clear formatting
 
 ## Conversation Guidelines:
 - Use direct address (you, your) instead of third person (the user, they)
 - Maintain conversation context and reference previous messages when relevant
-- Build on previous recommendations and suggestions
+- Build on previous travel recommendations and suggestions
 - Keep the conversation flowing naturally
+- Always stay focused on travel topics
 
 ## Follow-up Questions:
 After providing your main response, always include 2-3 relevant follow-up questions or suggestions that could help the user continue the conversation. These should be:
-- Related to the topic discussed
-- Helpful for planning or decision-making
+- Related to travel topics discussed
+- Helpful for travel planning or decision-making
 - Natural conversation continuations
-- Specific and actionable
+- Specific and actionable travel suggestions
 
 Format follow-up questions as:
 **🤔 What's Next?**
-• [Follow-up question 1]
-• [Follow-up question 2]
-• [Follow-up question 3]
+• [Travel-related follow-up question 1]
+• [Travel-related follow-up question 2]
+• [Travel-related follow-up question 3]
 
 **Note:** For very short responses or simple acknowledgments, you may skip follow-up questions, but for most responses, include them to maintain conversation flow.
 `;
 }
 
 export async function askLLM(history, userMessage) {
+  // Check if the message is travel-related
+  if (!isTravelQuery(userMessage)) {
+    console.log("🚫 Non-travel query detected, redirecting to travel assistance");
+    return "I'm a travel assistant and can only help with travel-related questions. How can I assist you with your travel plans today? For example, I can help you with:\n\n• **Destination recommendations** and travel planning\n• **Hotel and flight bookings**\n• **Weather information** for your travel dates\n• **Travel tips** and local insights\n• **Itinerary planning** and sightseeing suggestions\n• **Budget planning** and cost estimates\n\nWhat travel-related question can I help you with?";
+  }
+  
   // Check for duplicate messages to avoid unnecessary processing
   if (isDuplicateMessage(userMessage, history)) {
     console.log("🔄 Skipping duplicate message processing");
