@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { sendMessage } from "./api";
+import { sendMessage, createNewChat } from "./api";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -46,6 +46,7 @@ export default function App() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sessionId, setSessionId] = useState(null);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -74,14 +75,19 @@ export default function App() {
     setIsLoading(true);
 
     try {
-      const response = await sendMessage(input);
+      const response = await sendMessage(input, sessionId);
       
-      if (!response) {
+      if (!response.reply) {
         throw new Error("Empty response from API");
       }
       
-      const assistantMsg = { role: "assistant", content: response, timestamp: new Date() };
+      const assistantMsg = { role: "assistant", content: response.reply, timestamp: new Date() };
       setMessages((prev) => [...prev, assistantMsg]);
+      
+      // Update session ID if this is a new session
+      if (response.sessionId && !sessionId) {
+        setSessionId(response.sessionId);
+      }
     } catch (error) {
       console.error("Error sending message:", error);
       setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again.", timestamp: new Date() }]);
@@ -106,9 +112,12 @@ export default function App() {
       setInput("");
       setIsLoading(true);
 
-      sendMessage(action)
+      sendMessage(action, sessionId)
         .then(response => {
-          setMessages(prev => [...prev, { role: "assistant", content: response, timestamp: new Date() }]);
+          setMessages(prev => [...prev, { role: "assistant", content: response.reply, timestamp: new Date() }]);
+          if (response.sessionId && !sessionId) {
+            setSessionId(response.sessionId);
+          }
         })
         .catch(error => {
           console.error("Error sending message:", error);
@@ -175,14 +184,34 @@ export default function App() {
     return timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const clearChat = () => {
-    setMessages([
-      {
-        role: "assistant",
-        content: "Hello! I'm your AI travel assistant. I can help you with:\n\n• Destination recommendations\n• Weather information for any city\n• Packing suggestions\n• Travel tips and advice\n\nWhat would you like to know about?",
-        timestamp: new Date()
-      }
-    ]);
+  const clearChat = async () => {
+    try {
+      // Create a new chat session
+      const newSessionId = await createNewChat();
+      setSessionId(newSessionId);
+      
+      // Reset messages to initial state
+      setMessages([
+        {
+          role: "assistant",
+          content: "Hello! I'm your AI travel assistant. I can help you with:\n\n• Destination recommendations\n• Weather information for any city\n• Packing suggestions\n• Travel tips and advice\n\nWhat would you like to know about?",
+          timestamp: new Date()
+        }
+      ]);
+      
+      console.log("🆕 Started new chat session:", newSessionId);
+    } catch (error) {
+      console.error("Error creating new chat:", error);
+      // Fallback: just reset messages locally
+      setMessages([
+        {
+          role: "assistant",
+          content: "Hello! I'm your AI travel assistant. I can help you with:\n\n• Destination recommendations\n• Weather information for any city\n• Packing suggestions\n• Travel tips and advice\n\nWhat would you like to know about?",
+          timestamp: new Date()
+        }
+      ]);
+      setSessionId(null);
+    }
   };
 
   return (
@@ -299,6 +328,20 @@ export default function App() {
               </div>
               <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Travel Assistant</h1>
             </div>
+          </div>
+          
+          {/* Session Info */}
+          <div className="flex items-center space-x-3">
+            {sessionId && (
+              <div className="hidden md:flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+                <span className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                  Session: {sessionId.slice(-8)}
+                </span>
+                <span className="bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-1 rounded">
+                  {messages.length - 1} messages
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
