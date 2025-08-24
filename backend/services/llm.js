@@ -91,6 +91,108 @@ function calculateTimeout(message, history) {
   }
 }
 
+// Function to detect duplicate or very similar messages
+function isDuplicateMessage(message, history, threshold = 0.8) {
+  if (history.length === 0) return false;
+  
+  const lowerMessage = message.toLowerCase().trim();
+  
+  // Check for exact duplicates first
+  const exactDuplicate = history.some(msg => 
+    msg.role === 'user' && 
+    msg.content.toLowerCase().trim() === lowerMessage
+  );
+  
+  if (exactDuplicate) {
+    console.log("🔄 Detected exact duplicate message");
+    return true;
+  }
+  
+  // Check for similar messages (simple word overlap)
+  const messageWords = new Set(lowerMessage.split(/\s+/));
+  
+  for (const msg of history) {
+    if (msg.role !== 'user') continue;
+    
+    const historyWords = new Set(msg.content.toLowerCase().trim().split(/\s+/));
+    const intersection = new Set([...messageWords].filter(x => historyWords.has(x)));
+    const union = new Set([...messageWords, ...historyWords]);
+    
+    const similarity = intersection.size / union.size;
+    
+    if (similarity > threshold) {
+      console.log(`🔄 Detected similar message (${Math.round(similarity * 100)}% similarity)`);
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+// Function to consolidate weather queries
+function consolidateWeatherQueries(history) {
+  const weatherQueries = history.filter(msg => 
+    msg.role === 'user' && isWeatherQuery(msg.content)
+  );
+  
+  if (weatherQueries.length <= 1) return history;
+  
+  // Keep only the most recent weather query for each unique city
+  const cityQueries = new Map();
+  
+  for (const query of weatherQueries) {
+    const city = extractCityFromWeatherQuery(query.content);
+    if (city) {
+      cityQueries.set(city, query);
+    }
+  }
+  
+  // Replace all weather queries with consolidated versions
+  const consolidatedHistory = history.filter(msg => 
+    !(msg.role === 'user' && isWeatherQuery(msg.content))
+  );
+  
+  // Add back the most recent query for each city
+  for (const query of cityQueries.values()) {
+    consolidatedHistory.push(query);
+  }
+  
+  console.log(`🔄 Consolidated ${weatherQueries.length} weather queries into ${cityQueries.size} unique cities`);
+  return consolidatedHistory;
+}
+
+// Function to clean and optimize conversation history
+function cleanConversationHistory(history, maxMessages = null) {
+  const defaultMaxMessages = parseInt(process.env.OLLAMA_MAX_HISTORY_MESSAGES) || 8;
+  const actualMaxMessages = maxMessages || defaultMaxMessages;
+  
+  if (history.length <= actualMaxMessages) return history;
+  
+  console.log(`🧹 Cleaning conversation history: ${history.length} → ${actualMaxMessages} messages`);
+  
+  // Remove duplicates and consolidate weather queries
+  let cleanedHistory = consolidateWeatherQueries(history);
+  
+  // Remove exact duplicates
+  const seen = new Set();
+  cleanedHistory = cleanedHistory.filter(msg => {
+    const key = `${msg.role}:${msg.content.toLowerCase().trim()}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+  
+  // If still too long, keep the most recent messages
+  if (cleanedHistory.length > actualMaxMessages) {
+    cleanedHistory = cleanedHistory.slice(-actualMaxMessages);
+  }
+  
+  console.log(`✅ Cleaned history: ${history.length} → ${cleanedHistory.length} messages`);
+  return cleanedHistory;
+}
+
 // Function to extract city name from weather query
 function extractCityFromWeatherQuery(message) {
   // Simple pattern matching - can be improved with NLP
@@ -162,6 +264,13 @@ You are a helpful Travel Assistant with access to weather information.
 }
 
 export async function askLLM(history, userMessage) {
+  // Check for duplicate messages to avoid unnecessary processing
+  if (isDuplicateMessage(userMessage, history)) {
+    console.log("🔄 Skipping duplicate message processing");
+    // Return a cached response or simple acknowledgment
+    return "I've already answered this question. Is there anything specific you'd like me to clarify or expand on?";
+  }
+  
   // Determine which prompt strategy to use
   const useChainOfThought = needsChainOfThought(userMessage);
   const systemPrompt = useChainOfThought ? getChainOfThoughtPrompt() : getStandardPrompt();
@@ -189,13 +298,12 @@ export async function askLLM(history, userMessage) {
     console.log("🧠 Using chain-of-thought reasoning for complex query");
   }
 
-  // Limit conversation history to prevent context overflow
-  const maxHistoryLength = 10; // Keep last 10 messages
-  const limitedHistory = history.slice(-maxHistoryLength);
+  // Clean and optimize conversation history
+  const cleanedHistory = cleanConversationHistory(history); // Uses environment variable or default of 8
 
   const messages = [
     { role: "system", content: systemPrompt },
-    ...limitedHistory,
+    ...cleanedHistory,
     { role: "user", content: enhancedUserMessage }
   ];
 

@@ -33,6 +33,13 @@ The assistant automatically adjusts response timeouts based on question complexi
 - **Follow-ups after complex queries**: 4 minutes (e.g., "Can you add more details?" after a complex planning request)
 - All timeouts are configurable via environment variables
 
+### Conversation History Management
+The assistant intelligently manages conversation context to improve performance:
+- **Duplicate detection**: Automatically skips processing of duplicate or very similar messages
+- **Weather query consolidation**: Combines multiple weather queries for the same city into one
+- **Context optimization**: Maintains only the most relevant recent messages (default: 8 messages)
+- **Smart cleanup**: Removes redundant information while preserving conversation flow
+
 ### How to Run
 1. Clone repo
 2. `cd backend && npm install`
@@ -47,6 +54,9 @@ The assistant automatically adjusts response timeouts based on question complexi
    OLLAMA_TIMEOUT_COMPLEX=180000       # 3 minutes for complex queries
    OLLAMA_TIMEOUT_FOLLOWUP=150000      # 2.5 minutes for follow-up questions
    OLLAMA_TIMEOUT_FOLLOWUP_COMPLEX=240000  # 4 minutes for follow-ups after complex queries
+   
+   # Conversation management
+   OLLAMA_MAX_HISTORY_MESSAGES=8       # Maximum conversation history to maintain
    ```
 4. `node index.js`
 5. `cd frontend && npm install && npm start`
