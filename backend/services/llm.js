@@ -233,6 +233,19 @@ You are a helpful Travel Assistant. For complex questions, use this structured a
 **📝 Tips:** Additional helpful info
 
 Always show your reasoning process clearly using markdown formatting.
+
+## Follow-up Questions:
+After providing your main response, always include 2-3 relevant follow-up questions or suggestions that could help the user continue the conversation. These should be:
+- Related to the topic discussed
+- Helpful for planning or decision-making
+- Natural conversation continuations
+- Specific and actionable
+
+Format follow-up questions as:
+**🤔 What's Next?**
+• [Follow-up question 1]
+• [Follow-up question 2]
+• [Follow-up question 3]
 `;
 }
 
@@ -260,6 +273,21 @@ You are a helpful Travel Assistant with access to weather information.
 - Structure responses with clear sections using markdown headers
 - Use tables when presenting comparison data
 - Provide actionable recommendations with clear formatting
+
+## Follow-up Questions:
+After providing your main response, always include 2-3 relevant follow-up questions or suggestions that could help the user continue the conversation. These should be:
+- Related to the topic discussed
+- Helpful for planning or decision-making
+- Natural conversation continuations
+- Specific and actionable
+
+Format follow-up questions as:
+**🤔 What's Next?**
+• [Follow-up question 1]
+• [Follow-up question 2]
+• [Follow-up question 3]
+
+**Note:** For very short responses or simple acknowledgments, you may skip follow-up questions, but for most responses, include them to maintain conversation flow.
 `;
 }
 
