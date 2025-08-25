@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || "http://localhost:11434";
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama2";
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llama3:latest";
 
 // Check if message is travel-related
 function isTravelQuery(message) {
@@ -17,7 +17,9 @@ function isTravelQuery(message) {
     'nightlife', 'entertainment', 'festival', 'event', 'season', 'budget',
     'cost', 'price', 'expensive', 'cheap', 'affordable', 'luxury',
     'backpacking', 'solo travel', 'family', 'couple', 'group', 'business',
-    'conference', 'meeting', 'work', 'remote', 'digital nomad', 'pack'
+    'conference', 'meeting', 'work', 'remote', 'digital nomad', 'pack',
+    'weather', 'temperature', 'forecast', 'climate', 'rain', 'snow', 'sunny',
+    'cloudy', 'hot', 'cold', 'humidity', 'wind'
   ];
   
   const lowerMessage = message.toLowerCase();
@@ -137,6 +139,18 @@ After your main response, include 1-3 natural follow-up questions when helpful:
 - Keep responses concise and natural`;
 }
 
+// Build conversation context from history
+function buildConversationContext(history) {
+  if (history.length === 0) return "";
+  
+  let context = "\n\nPrevious conversation:\n";
+  for (const msg of history) {
+    const role = msg.role === "user" ? "User" : "Assistant";
+    context += `${role}: ${msg.content}\n`;
+  }
+  return context;
+}
+
 export async function travelAssistant(history, userMessage) {
   // Check if message is travel-related
   if (!isTravelQuery(userMessage)) {
@@ -147,24 +161,23 @@ export async function travelAssistant(history, userMessage) {
   const useChainOfThought = needsChainOfThought(userMessage);
   const systemPrompt = useChainOfThought ? getChainOfThoughtPrompt() : getStandardPrompt();
 
-  // Prepare messages for Ollama
-  const messages = [
-    { role: "system", content: systemPrompt },
-    ...history,
-    { role: "user", content: userMessage }
-  ];
+  // Build conversation context
+  const conversationContext = buildConversationContext(history);
+  
+  // Create the full prompt
+  const fullPrompt = systemPrompt + conversationContext + `\n\nUser: ${userMessage}\nAssistant:`;
 
   console.log("🤖 Sending to Ollama with", useChainOfThought ? "chain-of-thought" : "standard", "reasoning");
 
   try {
-    const response = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
+    const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model: OLLAMA_MODEL,
-        messages: messages,
+        prompt: fullPrompt,
         stream: false,
         options: {
           temperature: 0.7,
@@ -181,11 +194,11 @@ export async function travelAssistant(history, userMessage) {
 
     const data = await response.json();
     
-    if (!data.message || !data.message.content) {
+    if (!data.response) {
       throw new Error("Invalid response format from Ollama");
     }
 
-    return data.message.content;
+    return data.response;
     
   } catch (error) {
     console.error("❌ Ollama error:", error);
