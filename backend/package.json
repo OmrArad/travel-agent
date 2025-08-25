@@ -1,44 +1,21 @@
 {
-  
-  "name": "backend",
-  
+  "name": "travel-assistant-backend",
   "version": "1.0.0",
-  
   "main": "index.js",
-  
   "type": "module",
-  
   "scripts": {
-  
-    
-  "test": "echo \"Error: no test specified\" && exit 1"
-  
+    "start": "node index.js",
+    "dev": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  
-  "keywords": [],
-  
+  "keywords": ["travel", "assistant", "ai", "ollama"],
   "author": "",
-  
   "license": "ISC",
-  
-  "description": "",
-  
+  "description": "Backend for AI Travel Assistant",
   "dependencies": {
-  
-    
-  "body-parser": "^2.2.0",
-  
-    
-  "cors": "^2.8.5",
-  
-    
-  "dotenv": "^17.2.1",
-  
-    
-  "express": "^5.1.0",
-  
-    
-  "node-fetch": "^3.3.2"
-  
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "node-fetch": "^3.3.2"
   }
 }

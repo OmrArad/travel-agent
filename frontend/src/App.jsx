@@ -3,52 +3,18 @@ import { sendMessage, createNewChat } from "./api";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
-// Error boundary component
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error("React Error Boundary caught an error:", error, errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-          <h2>Something went wrong.</h2>
-          <details className="mt-2">
-            <summary>Error details</summary>
-            <pre className="mt-2 text-xs">{this.state.error?.toString()}</pre>
-          </details>
-        </div>
-      );
-    }
-
-    return this.props.children;
-  }
-}
-
 export default function App() {
   const [messages, setMessages] = useState([
     {
       role: "assistant",
-      content: "Hello! I'm your AI travel assistant. I can help you with:\n\n• Destination recommendations\n• Weather information for any city\n• Packing suggestions\n• Travel tips and advice\n\nWhat would you like to know about?",
+      content: "Hello! I'm your AI travel assistant. I can help you with:\n\n• **Destination recommendations** and travel planning\n• **Weather information** for any city\n• **Packing suggestions** and travel tips\n• **Budget planning** and cost estimates\n• **Itinerary planning** and local insights\n\nWhat would you like to know about?",
       timestamp: new Date()
     }
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const messagesEndRef = useRef(null);
-  const textareaRef = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -58,19 +24,11 @@ export default function App() {
     scrollToBottom();
   }, [messages, isLoading]);
 
-  // Auto-resize textarea
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + 'px';
-    }
-  }, [input]);
-
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || isLoading) return;
     
     const newMsg = { role: "user", content: input, timestamp: new Date() };
-    setMessages([...messages, newMsg]);
+    setMessages(prev => [...prev, newMsg]);
     setInput("");
     setIsLoading(true);
 
@@ -82,7 +40,7 @@ export default function App() {
       }
       
       const assistantMsg = { role: "assistant", content: response.reply, timestamp: new Date() };
-      setMessages((prev) => [...prev, assistantMsg]);
+      setMessages(prev => [...prev, assistantMsg]);
       
       // Update session ID if this is a new session
       if (response.sessionId && !sessionId) {
@@ -90,7 +48,11 @@ export default function App() {
       }
     } catch (error) {
       console.error("Error sending message:", error);
-      setMessages((prev) => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again.", timestamp: new Date() }]);
+      setMessages(prev => [...prev, { 
+        role: "assistant", 
+        content: "Sorry, I encountered an error. Please try again.", 
+        timestamp: new Date() 
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -105,23 +67,31 @@ export default function App() {
 
   const handleQuickAction = (action) => {
     setInput(action);
-    // Auto-send the quick action
+    // Auto-send after a brief delay
     setTimeout(() => {
       const newMsg = { role: "user", content: action, timestamp: new Date() };
-      setMessages([...messages, newMsg]);
+      setMessages(prev => [...prev, newMsg]);
       setInput("");
       setIsLoading(true);
 
       sendMessage(action, sessionId)
         .then(response => {
-          setMessages(prev => [...prev, { role: "assistant", content: response.reply, timestamp: new Date() }]);
+          setMessages(prev => [...prev, { 
+            role: "assistant", 
+            content: response.reply, 
+            timestamp: new Date() 
+          }]);
           if (response.sessionId && !sessionId) {
             setSessionId(response.sessionId);
           }
         })
         .catch(error => {
           console.error("Error sending message:", error);
-          setMessages(prev => [...prev, { role: "assistant", content: "Sorry, I encountered an error. Please try again.", timestamp: new Date() }]);
+          setMessages(prev => [...prev, { 
+            role: "assistant", 
+            content: "Sorry, I encountered an error. Please try again.", 
+            timestamp: new Date() 
+          }]);
         })
         .finally(() => {
           setIsLoading(false);
@@ -130,42 +100,37 @@ export default function App() {
   };
 
   const formatMessage = (content, role) => {
-    // For user messages, just return plain text
     if (role === "user") {
       return content;
     }
     
-    // For assistant messages, render markdown with error handling
     return (
-      <ErrorBoundary>
-        <div className="prose prose-sm max-w-none dark:prose-invert">
-          <ReactMarkdown 
-            remarkPlugins={[remarkGfm]}
-            components={{
-              // Apply styling through components
-              h1: ({children}) => <h1 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">{children}</h1>,
-              h2: ({children}) => <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">{children}</h2>,
-              h3: ({children}) => <h3 className="text-base font-medium mb-2 text-gray-900 dark:text-white">{children}</h3>,
-              p: ({children}) => <p className="mb-2 leading-relaxed text-gray-700 dark:text-gray-300">{children}</p>,
-              ul: ({children}) => <ul className="list-disc list-inside mb-3 space-y-1 text-gray-700 dark:text-gray-300">{children}</ul>,
-              ol: ({children}) => <ol className="list-decimal list-inside mb-3 space-y-1 text-gray-700 dark:text-gray-300">{children}</ol>,
-              li: ({children}) => <li className="leading-relaxed">{children}</li>,
-              strong: ({children}) => <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>,
-              em: ({children}) => <em className="italic">{children}</em>,
-              code: ({children, inline}) => 
-                inline ? (
-                  <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono text-gray-800 dark:text-gray-200">{children}</code>
-                ) : (
-                  <code className="block bg-gray-100 dark:bg-gray-700 p-3 rounded-lg text-sm font-mono overflow-x-auto text-gray-800 dark:text-gray-200">{children}</code>
-                ),
-              pre: ({children}) => <pre className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg overflow-x-auto mb-3">{children}</pre>,
-              blockquote: ({children}) => <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-600 dark:text-gray-300 mb-3">{children}</blockquote>,
-            }}
-          >
-            {content}
-          </ReactMarkdown>
-        </div>
-      </ErrorBoundary>
+      <div className="prose prose-sm max-w-none dark:prose-invert">
+        <ReactMarkdown 
+          remarkPlugins={[remarkGfm]}
+          components={{
+            h1: ({children}) => <h1 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">{children}</h1>,
+            h2: ({children}) => <h2 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">{children}</h2>,
+            h3: ({children}) => <h3 className="text-base font-medium mb-2 text-gray-900 dark:text-white">{children}</h3>,
+            p: ({children}) => <p className="mb-2 leading-relaxed text-gray-700 dark:text-gray-300">{children}</p>,
+            ul: ({children}) => <ul className="list-disc list-inside mb-3 space-y-1 text-gray-700 dark:text-gray-300">{children}</ul>,
+            ol: ({children}) => <ol className="list-decimal list-inside mb-3 space-y-1 text-gray-700 dark:text-gray-300">{children}</ol>,
+            li: ({children}) => <li className="leading-relaxed">{children}</li>,
+            strong: ({children}) => <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>,
+            em: ({children}) => <em className="italic">{children}</em>,
+            code: ({children, inline}) => 
+              inline ? (
+                <code className="bg-gray-100 dark:bg-gray-700 px-1 py-0.5 rounded text-sm font-mono text-gray-800 dark:text-gray-200">{children}</code>
+              ) : (
+                <code className="block bg-gray-100 dark:bg-gray-700 p-3 rounded-lg text-sm font-mono overflow-x-auto text-gray-800 dark:text-gray-200">{children}</code>
+              ),
+            pre: ({children}) => <pre className="bg-gray-100 dark:bg-gray-700 p-3 rounded-lg overflow-x-auto mb-3">{children}</pre>,
+            blockquote: ({children}) => <blockquote className="border-l-4 border-blue-500 pl-4 italic text-gray-600 dark:text-gray-300 mb-3">{children}</blockquote>,
+          }}
+        >
+          {content}
+        </ReactMarkdown>
+      </div>
     );
   };
 
@@ -186,27 +151,22 @@ export default function App() {
 
   const clearChat = async () => {
     try {
-      // Create a new chat session
       const newSessionId = await createNewChat();
       setSessionId(newSessionId);
       
-      // Reset messages to initial state
       setMessages([
         {
           role: "assistant",
-          content: "Hello! I'm your AI travel assistant. I can help you with:\n\n• Destination recommendations\n• Weather information for any city\n• Packing suggestions\n• Travel tips and advice\n\nWhat would you like to know about?",
+          content: "Hello! I'm your AI travel assistant. I can help you with:\n\n• **Destination recommendations** and travel planning\n• **Weather information** for any city\n• **Packing suggestions** and travel tips\n• **Budget planning** and cost estimates\n• **Itinerary planning** and local insights\n\nWhat would you like to know about?",
           timestamp: new Date()
         }
       ]);
-      
-      console.log("🆕 Started new chat session");
     } catch (error) {
       console.error("Error creating new chat:", error);
-      // Fallback: just reset messages locally
       setMessages([
         {
           role: "assistant",
-          content: "Hello! I'm your AI travel assistant. I can help you with:\n\n• Destination recommendations\n• Weather information for any city\n• Packing suggestions\n• Travel tips and advice\n\nWhat would you like to know about?",
+          content: "Hello! I'm your AI travel assistant. I can help you with:\n\n• **Destination recommendations** and travel planning\n• **Weather information** for any city\n• **Packing suggestions** and travel tips\n• **Budget planning** and cost estimates\n• **Itinerary planning** and local insights\n\nWhat would you like to know about?",
           timestamp: new Date()
         }
       ]);
@@ -217,12 +177,9 @@ export default function App() {
   return (
     <div className="h-screen bg-gray-50 dark:bg-gray-900 flex">
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-80 bg-gray-900 transform transition-transform duration-300 ease-in-out ${
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-      } lg:relative lg:translate-x-0 lg:flex lg:flex-col`}>
-        <div className="flex flex-col h-full">
-          {/* Sidebar Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-700">
+      <div className="hidden lg:flex lg:w-80 lg:flex-col lg:fixed lg:inset-y-0 lg:z-50">
+        <div className="flex flex-col flex-grow bg-gray-900 pt-5 pb-4 overflow-y-auto">
+          <div className="flex items-center flex-shrink-0 px-4">
             <button
               onClick={clearChat}
               className="flex items-center space-x-3 text-white hover:bg-gray-800 rounded-lg px-3 py-2 transition-colors"
@@ -232,18 +189,10 @@ export default function App() {
               </svg>
               <span className="font-medium">New chat</span>
             </button>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-gray-400 hover:text-white"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
 
           {/* Quick Actions */}
-          <div className="flex-1 p-4 space-y-3">
+          <div className="flex-1 px-4 space-y-3 mt-6">
             <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wider mb-4">Quick Actions</h3>
             
             <button
@@ -310,27 +259,16 @@ export default function App() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="lg:pl-80 flex flex-col flex-1">
         {/* Header */}
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
-            <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">✈️</span>
-              </div>
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Travel Assistant</h1>
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">✈️</span>
             </div>
+            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">Travel Assistant</h1>
           </div>
           
-          {/* Message count - optional */}
           <div className="flex items-center space-x-3">
             {messages.length > 1 && (
               <div className="hidden md:flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
@@ -426,7 +364,6 @@ export default function App() {
             <div className="flex items-end space-x-3">
               <div className="flex-1 relative">
                 <textarea
-                  ref={textareaRef}
                   className={`w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-2xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-700 dark:text-white text-sm ${
                     isLoading ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
@@ -463,14 +400,6 @@ export default function App() {
           </div>
         </div>
       </div>
-
-      {/* Overlay for mobile sidebar */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
     </div>
   );
 }

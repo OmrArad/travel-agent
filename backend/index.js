@@ -1,120 +1,139 @@
 import "dotenv/config";
 import express from "express";
-import bodyParser from "body-parser";
 import cors from "cors";
-import { askLLM } from "./services/llm.js";
+import { travelAssistant } from "./services/llm.js";
+import { getWeather } from "./services/weather.js";
 
-console.log("🔑 Ollama configuration:");
-console.log("  - Base URL:", process.env.OLLAMA_BASE_URL || "http://localhost:11434");
-console.log("  - Model:", process.env.OLLAMA_MODEL || "llama3:latest");
+console.log("🚀 Travel Assistant Backend Starting...");
+console.log("🔑 Ollama URL:", process.env.OLLAMA_BASE_URL || "http://localhost:11434");
+console.log("🤖 Model:", process.env.OLLAMA_MODEL || "llama2");
 
 const app = express();
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-// Session management for conversation histories
+// Simple session storage
 const sessions = new Map();
 
-// Generate a unique session ID
+// Generate session ID
 function generateSessionId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
-// Get or create session history
-function getSessionHistory(sessionId) {
+// Get or create session
+function getSession(sessionId) {
   if (!sessions.has(sessionId)) {
     sessions.set(sessionId, []);
   }
   return sessions.get(sessionId);
 }
 
-// Clean up old sessions (older than 24 hours)
-function cleanupOldSessions() {
+// Clean up old sessions (every hour)
+setInterval(() => {
   const now = Date.now();
-  const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+  const maxAge = 24 * 60 * 60 * 1000; // 24 hours
   
-  for (const [sessionId, history] of sessions.entries()) {
-    // Extract timestamp from session ID (first part before random string)
+  for (const [sessionId] of sessions.entries()) {
     const timestamp = parseInt(sessionId, 36);
     if (now - timestamp > maxAge) {
       sessions.delete(sessionId);
-      console.log(`🧹 Cleaned up old session: ${sessionId}`);
     }
   }
-}
+}, 60 * 60 * 1000);
 
-// Clean up sessions every hour
-setInterval(cleanupOldSessions, 60 * 60 * 1000);
-
+// Main chat endpoint
 app.post("/chat", async (req, res) => {
   try {
     const { message, sessionId } = req.body;
-    console.log("🟢 Incoming message:", message);
-    console.log("🆔 Session ID:", sessionId || "new session");
-
-    // Get or create session history
-    const conversationHistory = getSessionHistory(sessionId);
     
-    // Call LLM with function calling support
-    const response = await askLLM(conversationHistory, message);
-    console.log("🟢 LLM response (to be sent):", response);
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: "Message is required" });
+    }
 
-    // Add messages to session history
-    conversationHistory.push({ role: "user", content: message });
-    conversationHistory.push({ role: "assistant", content: response });
+    console.log("💬 New message:", message.substring(0, 50) + "...");
 
-    // Return response with session ID (create new one if not provided)
+    // Get session history
     const currentSessionId = sessionId || generateSessionId();
-    if (!sessionId) {
-      sessions.set(currentSessionId, conversationHistory);
+    const history = getSession(currentSessionId);
+    
+    // Check if it's a weather query
+    let enhancedMessage = message;
+    if (message.toLowerCase().includes('weather')) {
+      const city = extractCity(message);
+      if (city) {
+        try {
+          const weatherData = await getWeather(city);
+          enhancedMessage = `${message}\n\nCurrent weather for ${city}:\n${weatherData}`;
+        } catch (error) {
+          console.log("⚠️ Weather API error:", error.message);
+        }
+      }
+    }
+
+    // Get response from travel assistant
+    const response = await travelAssistant(history, enhancedMessage);
+    
+    // Update session history
+    history.push({ role: "user", content: message });
+    history.push({ role: "assistant", content: response });
+    
+    // Keep history manageable (last 10 messages)
+    if (history.length > 10) {
+      history.splice(0, history.length - 10);
     }
 
     res.json({ 
       reply: response, 
-      sessionId: currentSessionId,
-      messageCount: conversationHistory.length
+      sessionId: currentSessionId 
     });
-  } catch (err) {
-    console.error("❌ Error in /chat route:", err);
-    res.status(500).json({ error: "Something went wrong", details: err.message });
+    
+  } catch (error) {
+    console.error("❌ Chat error:", error);
+    res.status(500).json({ 
+      error: "Sorry, I'm having trouble right now. Please try again." 
+    });
   }
 });
 
-// Endpoint to start a new chat session
+// New chat session
 app.post("/new-chat", (req, res) => {
   const sessionId = generateSessionId();
   sessions.set(sessionId, []);
-  console.log("🆕 Created new chat session:", sessionId);
   res.json({ sessionId });
 });
 
-// Endpoint to get session info
-app.get("/session/:sessionId", (req, res) => {
-  const { sessionId } = req.params;
-  const history = sessions.get(sessionId);
-  
-  if (!history) {
-    return res.status(404).json({ error: "Session not found" });
-  }
-  
-  res.json({ 
-    sessionId, 
-    messageCount: history.length,
-    history: history.slice(-10) // Return last 10 messages
-  });
+// Health check
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Endpoint to clear a session
-app.delete("/session/:sessionId", (req, res) => {
-  const { sessionId } = req.params;
-  const deleted = sessions.delete(sessionId);
+// Extract city from weather query
+function extractCity(message) {
+  const patterns = [
+    /weather\s+(?:in|at|for)\s+([a-zA-Z\s]+)/i,
+    /(?:what's|what is)\s+(?:the\s+)?weather\s+(?:in|at|for)\s+([a-zA-Z\s]+)/i,
+    /temperature\s+(?:in|at|for)\s+([a-zA-Z\s]+)/i
+  ];
   
-  if (deleted) {
-    console.log("🗑️ Deleted session:", sessionId);
-    res.json({ message: "Session cleared successfully" });
-  } else {
-    res.status(404).json({ error: "Session not found" });
+  for (const pattern of patterns) {
+    const match = message.match(pattern);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
   }
-});
+  
+  // Fallback: look for capitalized words
+  const words = message.split(/\s+/);
+  for (const word of words) {
+    if (word.length > 2 && word[0] === word[0].toUpperCase() && /^[A-Za-z]+$/.test(word)) {
+      return word;
+    }
+  }
+  
+  return null;
+}
 
-app.listen(3001, () => console.log("Backend running on http://localhost:3001"));
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`✅ Backend running on http://localhost:${PORT}`);
+});
