@@ -16,7 +16,7 @@ A simple, effective travel assistant that demonstrates LLM conversation capabili
 
 - Node.js (v16 or higher)
 - Ollama installed and running locally
-- OpenWeather API key (optional, for weather features)
+- OpenWeather API key (optional, for enhanced weather features)
 
 ### Installation
 
@@ -41,15 +41,16 @@ A simple, effective travel assistant that demonstrates LLM conversation capabili
    ```bash
    # Backend (.env file)
    OLLAMA_BASE_URL=http://localhost:11434
-   OLLAMA_MODEL=llama2
-   OPENWEATHER_KEY=your_openweather_api_key_here
+   OLLAMA_MODEL=llama3:latest
+   # Optional: Add your OpenWeather API key for enhanced weather features
+   # OPENWEATHER_KEY=your_openweather_api_key_here
    PORT=3001
    ```
 
 4. **Start Ollama**
    ```bash
    # Make sure Ollama is running with a model
-   ollama run llama2
+   ollama run llama3:latest
    ```
 
 ### Running the Application
@@ -128,8 +129,8 @@ Both prompts include:
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `OLLAMA_BASE_URL` | Ollama server URL | `http://localhost:11434` |
-| `OLLAMA_MODEL` | Ollama model to use | `llama2` |
-| `OPENWEATHER_KEY` | OpenWeather API key | None (weather disabled) |
+| `OLLAMA_MODEL` | Ollama model to use | `llama3:latest` |
+| `OPENWEATHER_KEY` | OpenWeather API key (optional) | None (basic weather functionality) |
 | `PORT` | Backend port | `3001` |
 
 ## Development
@@ -180,10 +181,11 @@ travel-agent/
 
 1. **Ollama not responding**
    - Ensure Ollama is running: `ollama list`
-   - Check model is available: `ollama run llama2`
+   - Check model is available: `ollama run llama3:latest`
 
 2. **Weather not working**
-   - Verify OpenWeather API key is set
+   - Weather features work without API key (basic functionality)
+   - For enhanced weather data, verify OpenWeather API key is set
    - Check API key has proper permissions
 
 3. **Frontend can't connect to backend**

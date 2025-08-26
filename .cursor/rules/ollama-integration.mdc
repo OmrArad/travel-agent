@@ -16,7 +16,7 @@ import axios from 'axios';
 class OllamaService {
   constructor() {
     this.baseURL = process.env.OLLAMA_URL || 'http://localhost:11434';
-    this.defaultModel = process.env.OLLAMA_MODEL || 'llama2';
+    this.defaultModel = process.env.OLLAMA_MODEL || 'llama3:latest';
     this.timeout = parseInt(process.env.OLLAMA_TIMEOUT) || 30000;
   }
   
@@ -125,7 +125,7 @@ export const handleOllamaError = (error, req, res, next) => {
 // config/ollama.js
 export const ollamaConfig = {
   url: process.env.OLLAMA_URL || 'http://localhost:11434',
-  model: process.env.OLLAMA_MODEL || 'llama2',
+  model: process.env.OLLAMA_MODEL || 'llama3:latest',
   timeout: parseInt(process.env.OLLAMA_TIMEOUT) || 30000,
   maxTokens: parseInt(process.env.OLLAMA_MAX_TOKENS) || 2048,
   temperature: parseFloat(process.env.OLLAMA_TEMPERATURE) || 0.7,
@@ -185,7 +185,7 @@ export const sendMessage = async (message, options = {}) => {
 ```bash
 # .env
 OLLAMA_URL=http://localhost:11434
-OLLAMA_MODEL=llama2
+OLLAMA_MODEL=llama3:latest
 OLLAMA_TIMEOUT=30000
 OLLAMA_MAX_TOKENS=2048
 OLLAMA_TEMPERATURE=0.7

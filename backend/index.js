@@ -6,7 +6,7 @@ import { getWeather } from "./services/weather.js";
 
 console.log("🚀 Travel Assistant Backend Starting...");
 console.log("🔑 Ollama URL:", process.env.OLLAMA_BASE_URL || "http://localhost:11434");
-console.log("🤖 Model:", process.env.OLLAMA_MODEL || "llama2");
+console.log("🤖 Model:", process.env.OLLAMA_MODEL || "llama3:latest");
 
 const app = express();
 app.use(cors());

@@ -1,98 +1,74 @@
-# Key Prompt Engineering Decisions
+# Prompt Engineering Decisions
 
-## Travel-Only Policy
-- **Strict travel focus:** The assistant ONLY answers travel-related questions
-- **Non-travel rejection:** Math, general knowledge, and other non-travel queries are politely declined
-- **Travel keyword detection:** Automatic filtering of queries using comprehensive travel vocabulary
+## Core Strategy
 
-**Why this approach:** Ensures the assistant stays focused on its core purpose as a travel assistant and provides clear boundaries for users.
+### Dual Prompt Approach
+- **Chain-of-Thought**: For complex queries (planning, budgets, comparisons)
+- **Standard Prompt**: For simple queries (weather, tips, recommendations)
 
-## Dual Prompt Strategy
-- **Complex queries** (planning, budgets): Use chain-of-thought reasoning with structured analysis
-- **Simple queries** (weather, tips): Use standard prompt for concise responses
+**Decision**: Complex travel planning requires structured reasoning to break down budgets and logistics, while simple queries benefit from direct responses.
 
-**Why this approach:** Complex travel planning requires step-by-step reasoning to break down budgets, logistics, and trade-offs. Simple queries like weather don't need this depth and benefit from direct, concise responses.
+### Travel-Only Focus
+- Strict filtering to travel-related topics only
+- Polite redirection for non-travel queries
+- Comprehensive travel vocabulary detection
 
-## Prompt Architecture (DRY Principle)
-- **Base prompt:** Contains all shared sections (Travel-Only Policy, Hallucination Prevention, Conversation Guidelines, Follow-up Questions)
-- **Specialized prompts:** Chain-of-thought and Standard prompts extend the base prompt with their unique requirements
-- **Single source of truth:** Common guidelines are maintained in one place, reducing duplication and maintenance overhead
+**Decision**: Ensures the assistant stays focused on its core purpose and provides clear boundaries.
 
-**Why this approach:** 
-- **Maintainability:** Changes to shared guidelines only need to be made in one place
-- **Consistency:** Ensures both prompt types have identical core instructions
-- **Readability:** Clear separation between common and specialized prompt sections
-- **DRY compliance:** Eliminates code duplication while preserving functionality
+## Key Design Decisions
 
-## Response Structure
-- **Consistent formatting:** Markdown with emojis for readability
-- **Follow-up questions:** Include 1-2 natural follow-ups when they add value
-- **Direct address:** Use "you" instead of "the user" for personal engagement
-- **Subtle integration:** Embed questions naturally rather than using forced "What's Next?" sections
+### 1. Context Management
+- **History Limit**: 10 messages with automatic cleanup
+- **Session Persistence**: Maintains conversation context across interactions
+- **Smart Context Building**: Includes relevant conversation history in prompts
 
-**Why these choices:** 
-- **Emojis and formatting:** Makes responses scannable and visually appealing, especially for mobile users
-- **Follow-up questions:** Provides helpful guidance without being repetitive or forced
-- **Direct address:** Creates more personal, conversational experience compared to formal third-person responses
-- **Natural flow:** Avoids repetitive "What's Next?" sections that can feel artificial
+**Decision**: Balances context retention with processing efficiency and prevents token overflow.
 
-## Context Management
-- **History limit:** 8 messages with smart cleanup
-- **Duplicate detection:** 80% similarity threshold
-- **Weather consolidation:** Automatic city-based deduplication
-- **Travel filtering:** Automatic detection and rejection of non-travel queries
+### 2. Response Structure
+- **Markdown Formatting**: For readability and structure
+- **Follow-up Questions**: Natural, contextual follow-ups (not forced)
+- **Direct Address**: Uses "you" for personal engagement
+- **Emojis**: For visual appeal and quick scanning
 
-**Why these limits:** 
-- **8 messages:** Balances context retention with processing efficiency and cost
-- **80% similarity:** Prevents redundant processing while allowing slight variations in user questions
-- **Weather consolidation:** Reduces API calls and improves performance for repeated weather queries
-- **Travel filtering:** Ensures the assistant stays focused on travel topics and provides clear user guidance
+**Decision**: Makes responses scannable, engaging, and mobile-friendly while maintaining natural conversation flow.
 
-## Hallucination Detection and Prevention
+### 3. Weather Integration
+- **Automatic Detection**: Identifies weather queries using pattern matching
+- **Data Enhancement**: Injects real weather data into prompts when available
+- **Graceful Degradation**: Works without weather API for basic functionality
 
-### Multi-Layer Detection System
-- **Specific claims detection:** Identifies overly specific details (prices, phone numbers, addresses)
-- **Confidence indicators:** Monitors uncertainty and overconfidence language patterns
-- **Factual claims verification:** Flags information that may change over time
-- **Contradiction detection:** Identifies conflicting information within responses
-- **Off-topic detection:** Ensures responses address the user's question
+**Decision**: Provides real-time data when available but doesn't break core functionality without it.
 
-### Prevention Strategies
-- **System prompt guidelines:** Explicit instructions to avoid specific details when uncertain
-- **General ranges:** Use "$100-200 per night" instead of "$147.50"
-- **Qualifying language:** Use "typically," "usually," or "generally" for uncertain information
-- **Limitation acknowledgment:** Explicitly state when current information is unavailable
-- **Weather data integration:** Use real weather data when available, don't make up information
+### 4. Error Handling
+- **Hallucination Prevention**: Avoids specific claims when uncertain
+- **Confidence Indicators**: Uses qualifying language for uncertain information
+- **Graceful Failures**: Continues conversation even when external APIs fail
 
-### Warning System
-- **Confidence scoring:** 0-1 scale based on detected issues
-- **Intelligent warning selection:** Shows only the most relevant warning based on confidence level and issue type
-- **Priority-based warnings:** Missing weather data and contradictions get priority over generic warnings
-- **User guidance:** Clear instructions on what to verify independently
-- **Graceful degradation:** System continues to function even when confidence is low
+**Decision**: Builds user trust by being transparent about limitations and avoiding made-up information.
 
-**Why this approach:**
-- **Builds trust:** Users know when information may need verification
-- **Reduces errors:** Prevents the system from making up specific details
-- **Maintains usefulness:** Still provides helpful general advice even when specific details are uncertain
-- **Educational:** Teaches users to verify important travel information independently
+## Model Configuration
 
-## Model Settings Explained
+### Settings
+- **Temperature**: 0.7 (balanced creativity vs consistency)
+- **Top_p**: 0.9 (diverse vocabulary while staying safe)
+- **Max Tokens**: 2048 (comprehensive responses without verbosity)
 
-### Temperature: 0.7
-**What it means:** Controls how "creative" vs "focused" the AI responses are
-- **Lower values (0.0-0.3):** Very focused, consistent, but repetitive
-- **Higher values (0.8-1.0):** Very creative, but potentially inconsistent
-- **0.7 chosen:** Balanced creativity for engaging travel advice while maintaining reliability
+**Decision**: Optimized for engaging travel advice while maintaining reliability and reasonable response times.
 
-### Top_p: 0.9
-**What it means:** Controls vocabulary diversity by limiting word choices to the most likely 90%
-- **Lower values (0.5-0.7):** Very safe, common words, but potentially boring
-- **Higher values (0.9-1.0):** More diverse vocabulary, but risk of unusual word choices
-- **0.9 chosen:** Rich, varied language while staying within safe, understandable vocabulary
+## Prompt Architecture
 
-### Max Tokens: 4096
-**What it means:** Maximum length of AI response (roughly 3000-4000 words)
-- **Too low (1000-2000):** Responses cut off mid-sentence
-- **Too high (8000+):** Unnecessarily long responses, higher costs
-- **4096 chosen:** Allows comprehensive travel advice without excessive verbosity
+### Modular Design
+- **Base Prompt**: Shared guidelines and policies
+- **Specialized Prompts**: Chain-of-thought and standard variants
+- **DRY Principle**: Common sections maintained in one place
+
+**Decision**: Ensures consistency, maintainability, and reduces duplication while preserving functionality.
+
+## Key Innovations
+
+1. **Intelligent Query Classification**: Automatically detects complex vs simple queries
+2. **Context-Aware Follow-ups**: Generates relevant questions based on conversation history
+3. **Weather-Aware Responses**: Integrates real data seamlessly into travel advice
+4. **Conversation Flow Management**: Handles follow-up responses like "yes", "no" naturally
+
+**Decision**: Creates a more natural, helpful conversation experience that feels like talking to a knowledgeable travel expert.

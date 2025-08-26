@@ -89,7 +89,7 @@ class LLMService {
   async generateResponse(message) {
     try {
       const response = await axios.post(`${this.baseURL}/api/generate`, {
-        model: 'llama2',
+        model: 'llama3:latest',
         prompt: message,
         stream: false
       });
